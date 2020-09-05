@@ -1,4 +1,5 @@
 import pygame
+from screeninfo import get_monitors
 
 from grid_map import GridMap
 
@@ -43,7 +44,7 @@ class BrickWall:
                            [self.TEXT_BORDER, self.TEXT_GUTTER,
                             self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER],
                            # TODO still some bug here with the grid size rendering
-                           (10, 17))
+                           (100, 170))
         grid_map.draw_grid()
         running = True
         while running:
@@ -89,5 +90,8 @@ class BrickWall:
 
 
 if __name__ == '__main__':
+    # get screen resolution
+    m = get_monitors()[0]
+    print(str(m.height) + ' ' + str(m.width))
     # call with width of window and fps
-    BrickWall().run()
+    BrickWall(width=int(m.width - m.width*0.1), height=int(m.height - m.height*0.1)).run()
