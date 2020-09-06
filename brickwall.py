@@ -9,9 +9,9 @@ class BrickWall:
     Demo app to teach pygame and A*
     """
 
-    # https://coolors.co/0081a7-00afb9-fdfcdc-fed9b7-f07167
-    BACKGROUND_COLOUR = (253, 252, 220)
-    TEXT_COLOUR = (0, 129, 167)
+    # https://coolors.co/28536b-c2948a-7ea8be-f6f0ed-bbb193-8f2d56-c5d86d-dfefca-fff9a5-23ce6b
+    BACKGROUND_COLOUR = (246, 240, 237) # Isabelline
+    TEXT_COLOUR = (40, 83, 107) # Blue Sapphire
     # text border size
     TEXT_BORDER = 2
     TEXT_SIZE = 16
@@ -43,9 +43,12 @@ class BrickWall:
         grid_map = GridMap(self.background,
                            [self.TEXT_BORDER, self.TEXT_GUTTER,
                             self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER],
-                           # TODO still some bug here with the grid size rendering
-                           (100, 170))
+                           # some lost background is inevitable unless we fix the screen size and grid size
+                           # I prefer to customise this. Current value based on on w/d = 1.828
+                           (93, 170))
         grid_map.draw_grid()
+        grid_map.test_grid()
+        grid_map.render_cells()
         running = True
         while running:
             for event in pygame.event.get():
@@ -92,6 +95,5 @@ class BrickWall:
 if __name__ == '__main__':
     # get screen resolution
     m = get_monitors()[0]
-    print(str(m.height) + ' ' + str(m.width))
     # call with width of window and fps
     BrickWall(width=int(m.width - m.width*0.1), height=int(m.height - m.height*0.1)).run()
