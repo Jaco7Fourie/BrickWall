@@ -64,18 +64,18 @@ class PathSolverAStar:
 
         self.done = False
 
-    def euclidean_neighbours(self, c: GridCell) -> List[GridCell]:
+    def euclidean_neighbours(self, cell: GridCell) -> List[GridCell]:
         """
         Returns a list of neighbours of the cell provided. In this case it's the 8 adjacent cells
         :param c: the GridCell we want the neighbours for
         :return: a list of neighbours
         """
-        row_lim = (max(c.coord[0]-1, 0), min(c.coord[0]+1, len(self.cell_grid)))
-        col_lim = (max(c.coord[1] - 1, 0), min(c.coord[1] + 1, len(self.cell_grid[0])))
+        row_lim = (max(cell.coord[0]-1, 0), min(cell.coord[0] + 2, len(self.cell_grid)))
+        col_lim = (max(cell.coord[1] - 1, 0), min(cell.coord[1] + 2, len(self.cell_grid[0])))
         lst = []
         for r in range(row_lim[0], row_lim[1]):
             for c in range(col_lim[0], col_lim[1]):
-                if self.cell_grid[r][c].cell_type != 'wall':
+                if (r, c) != cell.coord and self.cell_grid[r][c].cell_type != 'wall':
                     lst.append(self.cell_grid[r][c])
         return lst
 
@@ -86,12 +86,13 @@ class PathSolverAStar:
         :param cell: the GridCell we want the neighbours for
         :return: a list of neighbours
         """
-        row_lim = (max(cell.coord[0]-1, 0), min(cell.coord[0]+1, len(self.cell_grid)))
-        col_lim = (max(cell.coord[1] - 1, 0), min(cell.coord[1] + 1, len(self.cell_grid[0])))
+        row_lim = (max(cell.coord[0]-1, 0), min(cell.coord[0]+2, len(self.cell_grid)))
+        col_lim = (max(cell.coord[1] - 1, 0), min(cell.coord[1] + 2, len(self.cell_grid[0])))
         lst = []
         for r in range(row_lim[0], row_lim[1]):
             for c in range(col_lim[0], col_lim[1]):
-                if (r == cell.coord[0] or c == cell.coord[1]) and self.cell_grid[r][c].cell_type != 'wall':
+                if (r, c) != cell.coord and (r == cell.coord[0] or c == cell.coord[1]) \
+                        and self.cell_grid[r][c].cell_type != 'wall':
                     lst.append(self.cell_grid[r][c])
         return lst
         
@@ -100,23 +101,34 @@ class PathSolverAStar:
         performs the next step in the algorithm and updates the cells accordingly
         :return: a status message
         """
+        updated = 0
+        inserted = 0
         if self.done or self.openSet.num_nodes == 0:
             self.done = True
             return 'Done'
         # remove the smallest f_score
         current = fheappop(self.openSet)
+        msg = f'current = {current.coord}'
         if current.coord == self.goal_cell.coord:
+            current.cell_type = 'goal'
+            current.draw_cell()
             msg = f'goal reached at {self.goal_cell.coord}. Total distance: {current.f_score}'
             # trace the path
             while current.comes_from is not None:
                 current = current.comes_from
-                current.type = 'path'
+                if current.cell_type != 'start':
+                    current.cell_type = 'path'
                 current.draw_cell()
             self.done = True
             return msg
 
+        if current.cell_type != 'start':
+            current.cell_type = 'visited'
+            current.draw_cell()
         for neighbour in self.neighbours(current):
             t_score = current.g_score + neighbour.cost
+            updated = 0
+            inserted = 0
             if t_score < neighbour.g_score:
                 # this is a better path to the neighbour so update the g_score
                 neighbour.comes_from = current
@@ -127,6 +139,13 @@ class PathSolverAStar:
                     elem = Node(neighbour)
                     self.openSet.insert(elem)
                     self.nodes_table[neighbour.coord] = elem
+                    neighbour.cell_type = 'open_set'
+                    neighbour.draw_cell()
+                    inserted += 1
                 else:
                     # update the Fibonacci heap
-
+                    elem = Node(neighbour)
+                    self.openSet.decrease_key(self.nodes_table[neighbour.coord], elem)
+                    self.nodes_table[neighbour.coord] = elem
+                    updated += 1
+        return msg + f' -- ({updated} updated: {inserted} inserted)'

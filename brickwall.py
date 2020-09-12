@@ -2,6 +2,7 @@ import pygame
 from screeninfo import get_monitors
 
 from grid_map import GridMap
+from path_solver_astar import PathSolverAStar
 
 
 class BrickWall:
@@ -45,11 +46,13 @@ class BrickWall:
                             self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER],
                            # some lost background is inevitable unless we fix the screen size and grid size
                            # I prefer to customise this. Current value based on on w/d = 1.828
-                           (93, 170))
+                           (15, 35))  # (93, 170))
         grid_map.draw_grid()
-        grid_map.init_grid()
+        s_cell, g_cell = grid_map.init_grid()
         grid_map.render_cells()
+        solver = PathSolverAStar(grid_map.cell_grid, s_cell, g_cell)
         running = True
+        paused = False
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -57,9 +60,14 @@ class BrickWall:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
+                    elif event.key == pygame.K_SPACE:
+                        paused = not paused
 
+            if not solver.done and not paused:
+                msg = solver.next_step()
             self.clock.tick(self.fps)
             self.draw_text(f"FPS: {self.clock.get_fps():6.3}", 3, self.TEXT_COLOUR)
+            self.draw_text(msg, 1, self.TEXT_COLOUR)
             pygame.display.flip()
             self.screen.blit(self.background, (0, 0))
 

@@ -36,7 +36,7 @@ class GridMap:
                 y_min = i * self.cell_size + self.BORDER_SIZE
                 y_max = (i + 1) * self.cell_size - self.BORDER_SIZE
                 row_list.append(GridCell(self.surf, 'empty', (self.bounds[0] + x_min, self.bounds[1] + y_min,
-                                                              self.bounds[0] + x_max, self.bounds[1] + y_max)))
+                                                              self.bounds[0] + x_max, self.bounds[1] + y_max), (i, j)))
             self.cell_grid.append(row_list)
 
     def __get_cell_size(self) -> int:
@@ -148,10 +148,15 @@ class GridMap:
         self.cell_grid[14][10].cell_type = 'wall'
         self.cell_grid[15][10].cell_type = 'wall'
 
-    def init_grid(self):
+    def init_grid(self, start_coords: Tuple[int, int] = (2, 2),
+                  goal_coords: Tuple[int, int] = (-2, -2)) -> Tuple[GridCell, GridCell]:
         """
-        Initialises the grid with a start point and end point
-        :return: None
+        Initialises the grid with a start point and end point.
+        :param start_coords:The row and column coordinates for the starting point
+        :param goal_coords:The row and column coordinates for the goal point. Negative indices counts
+            backwards from the end of the grid
+        :return: Tuple of (start_cell, goal_cell)
         """
-        self.cell_grid[2][2].cell_type = 'start'
-        self.cell_grid[self.grid_size[0]-2][self.grid_size[1]-2].cell_type = 'goal'
+        self.cell_grid[start_coords[0]][start_coords[1]].cell_type = 'start'
+        self.cell_grid[goal_coords[0]][goal_coords[1]].cell_type = 'goal'
+        return self.cell_grid[start_coords[0]][start_coords[1]], self.cell_grid[goal_coords[0]][goal_coords[1]]

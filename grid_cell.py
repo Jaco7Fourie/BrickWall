@@ -5,9 +5,10 @@ import pygame
 class GridCell:
     # https://coolors.co/28536b-c2948a-7ea8be-f6f0ed-bbb193-8f2d56-c5d86d-dfefca-fff9a5-23ce6b
     BACKGROUND_COLOUR = (246, 240, 237)  # Isabelline
-    PATH_COLOUR = (197, 216, 109) # June bud
+    PATH_COLOUR = (84, 97, 26) # Dark Moss Green
     WALL_COLOUR = (194, 148, 138) # Rosy Brown
     VISITED_COLOUR = (126, 168, 190) # Pewter Blue
+    OPEN_SET_COLOUR = (187, 177, 147)  # Khaki Web
     START_COLOUR = (35, 206, 107)  # Emerald
     GOAL_COLOUR = (143, 45, 86) # Quinacridone Magenta
 
@@ -16,7 +17,8 @@ class GridCell:
         """
         Initialises a new cell in the grid
         :param surface: The surface that this cell will draw to
-        :param cell_type: string to represent the type of the cell, one of {empty, path, visited, wall, start, goal}
+        :param cell_type: string to represent the type of the cell,
+            one of {empty, path, visited, open_set, wall, start, goal}
         :param bounding_rect: draw the grid only within these bounds
         :param coord: The coordinate of this cell in the grid (row, column)
         (top_left_x, top_left_y, bottom_right_x, bottom_right_y)
@@ -57,9 +59,11 @@ class GridCell:
 
     def draw_cell(self):
         if self.cell_type == 'path':
-            pygame.draw.rect(self.surf, GridCell.PATH_COLOUR, self.inner_bound)
+            pygame.draw.rect(self.surf, GridCell.PATH_COLOUR, self.draw_bounds)
         elif self.cell_type == 'visited':
             pygame.draw.rect(self.surf, GridCell.VISITED_COLOUR, self.inner_bound)
+        elif self.cell_type == 'open_set':
+            pygame.draw.rect(self.surf, GridCell.OPEN_SET_COLOUR, self.inner_bound)
         elif self.cell_type == 'wall':
             pygame.draw.rect(self.surf, GridCell.WALL_COLOUR, self.draw_bounds)
         elif self.cell_type == 'start':
