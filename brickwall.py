@@ -47,7 +47,7 @@ class BrickWall:
                            # I prefer to customise this. Current value based on on w/d = 1.828
                            (93, 170))
         grid_map.draw_grid()
-        grid_map.test_grid()
+        grid_map.init_grid()
         grid_map.render_cells()
         running = True
         while running:

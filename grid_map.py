@@ -1,6 +1,6 @@
 from typing import Tuple, List
 
-from  grid_cell import GridCell
+from grid_cell import GridCell
 import pygame
 
 
@@ -148,3 +148,10 @@ class GridMap:
         self.cell_grid[14][10].cell_type = 'wall'
         self.cell_grid[15][10].cell_type = 'wall'
 
+    def init_grid(self):
+        """
+        Initialises the grid with a start point and end point
+        :return: None
+        """
+        self.cell_grid[2][2].cell_type = 'start'
+        self.cell_grid[self.grid_size[0]-2][self.grid_size[1]-2].cell_type = 'goal'

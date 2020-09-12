@@ -11,22 +11,49 @@ class GridCell:
     START_COLOUR = (35, 206, 107)  # Emerald
     GOAL_COLOUR = (143, 45, 86) # Quinacridone Magenta
 
-    def __init__(self, surface: pygame.Surface, cell_type: str, bounding_rect: Tuple[int, int, int, int]):
+    def __init__(self, surface: pygame.Surface, cell_type: str,
+                 bounding_rect: Tuple[int, int, int, int], coord: Tuple[int, int]):
         """
         Initialises a new cell in the grid
         :param surface: The surface that this cell will draw to
         :param cell_type: string to represent the type of the cell, one of {empty, path, visited, wall, start, goal}
         :param bounding_rect: draw the grid only within these bounds
+        :param coord: The coordinate of this cell in the grid (row, column)
         (top_left_x, top_left_y, bottom_right_x, bottom_right_y)
         """
         self.draw_bounds = (bounding_rect[0], bounding_rect[1], bounding_rect[2] - bounding_rect[0]+1,
                             bounding_rect[3] - bounding_rect[1]+1)
         self.surf = surface
         self.cell_type = cell_type
+        self.coord = coord
 
         inner_border = 2  # ((self.bounds[2] - self.bounds[0])*0.9) // 2
         self.inner_bound = (self.draw_bounds[0] + inner_border, self.draw_bounds[1] + inner_border,
                             self.draw_bounds[2] - inner_border*2, self.draw_bounds[3] - inner_border*2)
+
+        self.f_score = float('inf')
+        self.g_score = float('inf')
+        # currently all cells have a cost of 1 but we leave this here as placeholder for future advanced terrain cells
+        self.cost = 1
+        self.comes_from = None
+
+    def __lt__(self, other):
+        return self.f_score < other.f_score
+
+    def __gt__(self, other):
+        return self.f_score > other.f_score
+
+    def __le__(self, other):
+        return self.f_score <= other.f_score
+
+    def __ge__(self, other):
+        return self.f_score >= other.f_score
+
+    def __eq__(self, other):
+        return self.f_score == other.f_score
+
+    def __ne__(self, other):
+        return not self.f_score == other.f_score
 
     def draw_cell(self):
         if self.cell_type == 'path':
