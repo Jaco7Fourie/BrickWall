@@ -1,5 +1,5 @@
 from typing import Tuple, List
-
+from random import random
 from grid_cell import GridCell
 import pygame
 
@@ -25,7 +25,7 @@ class GridMap:
 
         self.cell_size = self.__get_cell_size()
         # update the bounds based on square sells
-        self.bounds[2] = self.bounds[0] + self.cell_size*self.grid_size[1]
+        self.bounds[2] = self.bounds[0] + self.cell_size * self.grid_size[1]
         self.bounds[3] = self.bounds[1] + self.cell_size * self.grid_size[0]
         self.cell_grid = []
         for i in range(grid_size[0]):
@@ -41,11 +41,23 @@ class GridMap:
 
     def __get_cell_size(self) -> int:
         """
-        utility function to calcualte the size of the grid cells
+        utility function to calculate the size of the grid cells
         """
         x_size = (self.bounds[2] - self.bounds[0]) // self.grid_size[1]
         y_size = (self.bounds[3] - self.bounds[1]) // self.grid_size[0]
         return min(x_size, y_size)
+
+    def cell_coords_from_mouse_coords(self, mouse_coords: Tuple[int, int]) -> Tuple[int, int]:
+        """
+        converts mouse coordinates to cell grid coordinates
+        :param mouse_coords: tuple of mouse x and y coordinate
+        :return: tuple of grid coordinate
+        """
+        if mouse_coords[0] < self.bounds[0] or mouse_coords[0] > self.bounds[2] or \
+                mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
+            return -1, -1
+        norm_coord = mouse_coords[0] - self.bounds[0], mouse_coords[1] - self.bounds[1]
+        return 1 + norm_coord[0] // self.cell_size, 1 + norm_coord[1] // self.cell_size
 
     def draw_grid(self, border_colour: Tuple[int] = (0, 0, 0)):
         """
@@ -59,14 +71,14 @@ class GridMap:
         # Draw horizontal bars
         x_min, x_max = self.bounds[0], self.bounds[2]
         for i in range(self.grid_size[0]):
-            pygame.draw.line(self.surf, border_colour, (x_min, self.bounds[1] + i*self.cell_size),
-                             (x_max, self.bounds[1] + i*self.cell_size),
+            pygame.draw.line(self.surf, border_colour, (x_min, self.bounds[1] + i * self.cell_size),
+                             (x_max, self.bounds[1] + i * self.cell_size),
                              self.BORDER_SIZE)
         # Draw vertical bars
         y_min, y_max = self.bounds[1], self.bounds[3]
         for i in range(self.grid_size[1]):
-            pygame.draw.line(self.surf, border_colour, (self.bounds[0] + i*self.cell_size, y_min),
-                             (self.bounds[0] + i*self.cell_size, y_max),
+            pygame.draw.line(self.surf, border_colour, (self.bounds[0] + i * self.cell_size, y_min),
+                             (self.bounds[0] + i * self.cell_size, y_max),
                              self.BORDER_SIZE)
 
     def render_cells(self):
@@ -149,14 +161,23 @@ class GridMap:
         self.cell_grid[15][10].cell_type = 'wall'
 
     def init_grid(self, start_coords: Tuple[int, int] = (2, 2),
-                  goal_coords: Tuple[int, int] = (-2, -2)) -> Tuple[GridCell, GridCell]:
+                  goal_coords: Tuple[int, int] = (-2, -2),
+                  random_walls_ratio: float = 0.0) -> Tuple[GridCell, GridCell]:
         """
         Initialises the grid with a start point and end point.
         :param start_coords:The row and column coordinates for the starting point
         :param goal_coords:The row and column coordinates for the goal point. Negative indices counts
             backwards from the end of the grid
+        :param random_walls_ratio: Value between 0 and 1 to control how much of the
+            grid should be randomly turned to walls
         :return: Tuple of (start_cell, goal_cell)
         """
+        if random_walls_ratio > 0:
+            for i in range(self.grid_size[0]):
+                for j in range(self.grid_size[1]):
+                    if random() < random_walls_ratio:
+                        self.cell_grid[i][j].cell_type = 'wall'
+
         self.cell_grid[start_coords[0]][start_coords[1]].cell_type = 'start'
         self.cell_grid[goal_coords[0]][goal_coords[1]].cell_type = 'goal'
         return self.cell_grid[start_coords[0]][start_coords[1]], self.cell_grid[goal_coords[0]][goal_coords[1]]

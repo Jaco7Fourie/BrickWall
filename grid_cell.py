@@ -3,14 +3,14 @@ import pygame
 
 
 class GridCell:
-    # https://coolors.co/28536b-c2948a-7ea8be-f6f0ed-bbb193-8f2d56-c5d86d-dfefca-fff9a5-23ce6b
+    # https://coolors.co/a90f33-f78c6b-ffd166-83d483-037758-118ab2-073b4c
     BACKGROUND_COLOUR = (246, 240, 237)  # Isabelline
-    PATH_COLOUR = (84, 97, 26) # Dark Moss Green
-    WALL_COLOUR = (194, 148, 138) # Rosy Brown
-    VISITED_COLOUR = (126, 168, 190) # Pewter Blue
-    OPEN_SET_COLOUR = (187, 177, 147)  # Khaki Web
-    START_COLOUR = (35, 206, 107)  # Emerald
-    GOAL_COLOUR = (143, 45, 86) # Quinacridone Magenta
+    PATH_COLOUR = (17, 138, 178) # Blue NSC
+    WALL_COLOUR = (80, 49, 42) # Dark Liver Horses
+    VISITED_COLOUR = (247, 140, 107) # Middle Red
+    OPEN_SET_COLOUR = (131, 212, 131)  # Mantis
+    START_COLOUR = (3, 119, 88)  # Tropical rain forest
+    GOAL_COLOUR = (169, 15, 51) # Cromson UA
 
     def __init__(self, surface: pygame.Surface, cell_type: str,
                  bounding_rect: Tuple[int, int, int, int], coord: Tuple[int, int]):
@@ -56,6 +56,12 @@ class GridCell:
 
     def __ne__(self, other):
         return not self.f_score == other.f_score
+
+    def __eq__(self, other):
+        return self.coord == other.coord
+
+    def __hash__(self):
+        return hash(self.coord)
 
     def draw_cell(self):
         if self.cell_type == 'path':

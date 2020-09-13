@@ -1,6 +1,6 @@
 from math import sqrt
 from typing import List
-from fibheap import *
+from depq import DEPQ
 
 from grid_cell import GridCell
 
@@ -41,13 +41,12 @@ class PathSolverAStar:
         :param heuristic:  The heuristic distance measure to use. One of {'euclidean', 'manhattan'}
         """
         self.cell_grid = cell_grid
-        self.openSet = Fheap()
+        self.openSet = DEPQ(maxlen=len(cell_grid)*len(cell_grid[0]))
         self.start_cell = start_cell
         self.goal_cell = goal_cell
-        elem = Node(start_cell)
-        self.openSet.insert(elem)
+        self.openSet.insert(start_cell, start_cell.f_score)
         # a hash table to keep track of nodes in the Fibonacci heap
-        self.nodes_table = {start_cell.coord: elem}
+        # self.nodes_table = {start_cell.coord: elem}
 
         if heuristic == 'euclidean':
             self.heuristic = euclidean_heuristic
@@ -67,7 +66,7 @@ class PathSolverAStar:
     def euclidean_neighbours(self, cell: GridCell) -> List[GridCell]:
         """
         Returns a list of neighbours of the cell provided. In this case it's the 8 adjacent cells
-        :param c: the GridCell we want the neighbours for
+        :param cell: the GridCell we want the neighbours for
         :return: a list of neighbours
         """
         row_lim = (max(cell.coord[0]-1, 0), min(cell.coord[0] + 2, len(self.cell_grid)))
@@ -103,11 +102,11 @@ class PathSolverAStar:
         """
         updated = 0
         inserted = 0
-        if self.done or self.openSet.num_nodes == 0:
+        if self.done or self.openSet.is_empty():
             self.done = True
             return 'Done'
         # remove the smallest f_score
-        current = fheappop(self.openSet)
+        current = self.openSet.poplast()[0]
         msg = f'current = {current.coord}'
         if current.coord == self.goal_cell.coord:
             current.cell_type = 'goal'
@@ -135,17 +134,17 @@ class PathSolverAStar:
                 neighbour.g_score = t_score
                 neighbour.f_score = t_score + self.heuristic(neighbour, self.goal_cell)
                 # only add the neighbour to the open set if it is not already in the open set
-                if neighbour.coord not in self.nodes_table:
-                    elem = Node(neighbour)
-                    self.openSet.insert(elem)
-                    self.nodes_table[neighbour.coord] = elem
+                if neighbour not in self.openSet:
+                    self.openSet.insert(neighbour, neighbour.f_score)
+                    # self.nodes_table[neighbour.coord] = elem
                     neighbour.cell_type = 'open_set'
                     neighbour.draw_cell()
                     inserted += 1
                 else:
-                    # update the Fibonacci heap
-                    elem = Node(neighbour)
-                    self.openSet.decrease_key(self.nodes_table[neighbour.coord], elem)
-                    self.nodes_table[neighbour.coord] = elem
+                    # elem = Node(neighbour)
+                    self.openSet.remove(neighbour)
+                    self.openSet.insert(neighbour, neighbour.f_score)
+                    # self.openSet.decrease_key(self.nodes_table[neighbour.coord], neighbour)
+                    # self.nodes_table[neighbour.coord] = elem
                     updated += 1
         return msg + f' -- ({updated} updated: {inserted} inserted)'
