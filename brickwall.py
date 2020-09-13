@@ -55,7 +55,7 @@ class BrickWall:
         self.grid_map.draw_grid()
         s_cell, g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        self.solver = PathSolverAStar(self.grid_map.cell_grid, s_cell, g_cell, heuristic='manhattan')
+        self.solver = PathSolverAStar(self.grid_map.cell_grid, s_cell, g_cell, heuristic='euclidean', movement='manhattan')
         self.running = True
         self.paused = False
 

@@ -32,13 +32,14 @@ class PathSolverAStar:
     """
 
     def __init__(self, cell_grid: List[List[GridCell]], start_cell: GridCell, goal_cell: GridCell,
-                 heuristic: str = 'euclidean'):
+                 heuristic: str = 'euclidean', movement: str = 'manhattan'):
         """
         Creates a new path solver and initialises the start and end point
         :param cell_grid: The cell grid
         :param start_cell: The starting cell
         :param goal_cell:  The goal cell
         :param heuristic:  The heuristic distance measure to use. One of {'euclidean', 'manhattan'}
+        :param movement: The way the agent is allowed to move. One of {'euclidean', 'manhattan'}
         """
         self.cell_grid = cell_grid
         self.openSet = DEPQ(maxlen=len(cell_grid)*len(cell_grid[0]))
@@ -50,14 +51,20 @@ class PathSolverAStar:
 
         if heuristic == 'euclidean':
             self.heuristic = euclidean_heuristic
-            self.neighbours = self.euclidean_neighbours
         elif heuristic == 'manhattan':
             self.heuristic = manhattan_heuristic
-            self.neighbours = self.manhattan_neighbours
         else:
             print(f'Invalid choice for heuristic. Must be either euclidean or manhattan not {heuristic}')
             exit(0)
 
+        if movement == 'euclidean':
+            self.neighbours = self.euclidean_neighbours
+        elif movement == 'manhattan':
+            self.neighbours = self.manhattan_neighbours
+        else:
+            print(f'Invalid choice for movement. Must be either euclidean or manhattan not {heuristic}')
+            exit(0)
+                        
         self.start_cell.f_score = self.heuristic(self.start_cell, self.goal_cell)
         self.start_cell.g_score = 0
 
