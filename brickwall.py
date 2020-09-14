@@ -13,12 +13,13 @@ class BrickWall:
     # https://coolors.co/a90f33-f78c6b-ffd166-83d483-037758-118ab2-073b4c
     BACKGROUND_COLOUR = (246, 240, 237)  # Isabelline
     TEXT_COLOUR = (7, 59, 76)  # Midnight green eagle green
+    HIGHLIGHT_COLOUR = (250, 250, 25)
     # text border size
     TEXT_BORDER = 2
     TEXT_SIZE = 16
     TEXT_GUTTER = TEXT_SIZE + 4
 
-    def __init__(self, width: int = 1280, height: int = 800, fps: int = 520):
+    def __init__(self, width: int = 1280, height: int = 800, fps: int = 120):
         """
         Initialize pygame, window, background, font,...
         :param width: the width of the main app window
@@ -46,6 +47,7 @@ class BrickWall:
         self.grid_map = None
         self.running = True
         self.paused = False
+        self.step = False
 
         pygame.event.set_allowed(None)
         pygame.event.set_allowed(pygame.QUIT)
@@ -66,6 +68,7 @@ class BrickWall:
         self.screen.blit(self.background, (0, 0))
         self.running = True
         self.paused = False
+        self.step = False
 
     def run(self):
         """
@@ -88,9 +91,16 @@ class BrickWall:
                         self.paused = not self.paused
                     elif event.key == pygame.K_r:
                         self.start_new_run()
+                    elif event.key == pygame.K_s:
+                        self.step = True
+                        self.paused = False
             # pygame.event.pump()
             if not self.solver.done and not self.paused:
                 msg, bounds = self.solver.next_step()
+            if self.step:
+                self.paused = True
+                self.step = False
+                bounds.append(pygame.draw.rect(self.background, self.HIGHLIGHT_COLOUR, bounds[0]))
 
             mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
             bounds.append(self.draw_text(f"Cell: {(mouse_x, mouse_y)}", 4, self.TEXT_COLOUR))
