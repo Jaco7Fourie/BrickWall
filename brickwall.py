@@ -31,6 +31,7 @@ class BrickWall:
         self.width = width
         self.height = height
         self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
+        self.screen.set_alpha(None)
         self.background = pygame.Surface(self.screen.get_size()).convert()
         self.background.fill(self.BACKGROUND_COLOUR)
         self.clock = pygame.time.Clock()
@@ -45,6 +46,11 @@ class BrickWall:
         self.grid_map = None
         self.running = True
         self.paused = False
+
+        pygame.event.set_allowed(None)
+        pygame.event.set_allowed(pygame.QUIT)
+        pygame.event.set_allowed(pygame.KEYDOWN)
+        pygame.event.set_allowed(pygame.KEYUP)
 
     def start_new_run(self):
         self.background.fill(self.BACKGROUND_COLOUR)
@@ -67,6 +73,7 @@ class BrickWall:
         self.start_new_run()
         while self.running:
             self.clock.tick(self.fps)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -77,7 +84,7 @@ class BrickWall:
                         self.paused = not self.paused
                     elif event.key == pygame.K_r:
                         self.start_new_run()
-
+            # pygame.event.pump()
             if not self.solver.done and not self.paused:
                 msg = self.solver.next_step()
 
@@ -87,6 +94,7 @@ class BrickWall:
             self.draw_text(msg, 1, self.TEXT_COLOUR)
             pygame.display.flip()
             self.screen.blit(self.background, (0, 0))
+
 
         pygame.quit()
 
