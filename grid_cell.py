@@ -51,9 +51,6 @@ class GridCell:
     def __ge__(self, other):
         return self.f_score >= other.f_score
 
-    def __eq__(self, other):
-        return self.f_score == other.f_score
-
     def __ne__(self, other):
         return not self.f_score == other.f_score
 
@@ -63,22 +60,26 @@ class GridCell:
     def __hash__(self):
         return hash(self.coord)
 
-    def draw_cell(self):
+    def draw_cell(self) -> pygame.Rect:
+        """
+        Draws the cell based on the cell type and return the bounds of the drawing
+        :return: rectangle that defines the bounds of the drawing
+        """
         if self.cell_type == 'path':
-            pygame.draw.rect(self.surf, GridCell.PATH_COLOUR, self.draw_bounds)
+            return pygame.draw.rect(self.surf, GridCell.PATH_COLOUR, self.draw_bounds)
         elif self.cell_type == 'visited':
-            pygame.draw.rect(self.surf, GridCell.VISITED_COLOUR, self.inner_bound)
+            return pygame.draw.rect(self.surf, GridCell.VISITED_COLOUR, self.inner_bound)
         elif self.cell_type == 'open_set':
-            pygame.draw.rect(self.surf, GridCell.OPEN_SET_COLOUR, self.inner_bound)
+            return pygame.draw.rect(self.surf, GridCell.OPEN_SET_COLOUR, self.inner_bound)
         elif self.cell_type == 'wall':
-            pygame.draw.rect(self.surf, GridCell.WALL_COLOUR, self.draw_bounds)
+            return pygame.draw.rect(self.surf, GridCell.WALL_COLOUR, self.draw_bounds)
         elif self.cell_type == 'start':
-            pygame.draw.rect(self.surf, GridCell.START_COLOUR, self.draw_bounds)
+            return pygame.draw.rect(self.surf, GridCell.START_COLOUR, self.draw_bounds)
         elif self.cell_type == 'goal':
-            pygame.draw.rect(self.surf, GridCell.GOAL_COLOUR, self.draw_bounds)
+            return pygame.draw.rect(self.surf, GridCell.GOAL_COLOUR, self.draw_bounds)
         elif self.cell_type == 'empty':
             pass  # pygame.draw.rect(self.surf, GridCell.BACKGROUND_COLOUR, self.bounds)
         else:
             print(f'Invalid Cell type: {self.cell_type}')
-            return None
+            return pygame.Rect(0, 0, 0, 0)
 

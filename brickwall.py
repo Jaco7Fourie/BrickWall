@@ -16,9 +16,9 @@ class BrickWall:
     # text border size
     TEXT_BORDER = 2
     TEXT_SIZE = 16
-    TEXT_GUTTER = TEXT_SIZE + 3
+    TEXT_GUTTER = TEXT_SIZE + 4
 
-    def __init__(self, width: int = 1280, height: int = 800, fps: int = 120):
+    def __init__(self, width: int = 1280, height: int = 800, fps: int = 520):
         """
         Initialize pygame, window, background, font,...
         :param width: the width of the main app window
@@ -40,7 +40,7 @@ class BrickWall:
         # some lost background is inevitable unless we fix the screen size and grid size
         # I prefer to customise this. Current value based on on w/d = 1.828
         self.grid_size = (93, 170)
-        self.random_walls = 0.25
+        self.random_walls = 0.025
 
         self.solver = None
         self.grid_map = None
@@ -61,7 +61,9 @@ class BrickWall:
         self.grid_map.draw_grid()
         s_cell, g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        self.solver = PathSolverAStar(self.grid_map.cell_grid, s_cell, g_cell, heuristic='euclidean', movement='manhattan')
+        self.solver = PathSolverAStar(self.grid_map.cell_grid, s_cell, g_cell,
+                                      heuristic='euclidean', movement='manhattan')
+        self.screen.blit(self.background, (0, 0))
         self.running = True
         self.paused = False
 
@@ -70,7 +72,9 @@ class BrickWall:
         The mainloop
         """
         msg = ''
+        bounds = []
         self.start_new_run()
+        self.background.convert()
         while self.running:
             self.clock.tick(self.fps)
             
@@ -86,19 +90,22 @@ class BrickWall:
                         self.start_new_run()
             # pygame.event.pump()
             if not self.solver.done and not self.paused:
-                msg = self.solver.next_step()
+                msg, bounds = self.solver.next_step()
 
             mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
-            self.draw_text(f"Cell: {(mouse_x, mouse_y)}", 4, self.TEXT_COLOUR)
-            self.draw_text(f"FPS: {self.clock.get_fps():>5.2f}", 3, self.TEXT_COLOUR)
-            self.draw_text(msg, 1, self.TEXT_COLOUR)
+            bounds.append(self.draw_text(f"Cell: {(mouse_x, mouse_y)}", 4, self.TEXT_COLOUR))
+            bounds.append(self.draw_text(f"FPS: {self.clock.get_fps():>5.2f}", 3, self.TEXT_COLOUR))
+            bounds.append(self.draw_text(msg, 1, self.TEXT_COLOUR))
+            bounds.append(self.draw_text(f'visited: {self.solver.visited} candidates: {self.solver.openSet.size()}',
+                                         2, self.TEXT_COLOUR))
             pygame.display.flip()
-            self.screen.blit(self.background, (0, 0))
-
+            pygame.display.update(bounds)
+            for r in bounds:
+                self.screen.blit(self.background, r, r)
 
         pygame.quit()
 
-    def draw_text(self, text, pos_index=0, col=(230, 230, 230)):
+    def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
         Draws text to the screen in the position index indicatred by pos_index
         pos_index can be numbers 1-4 which represent the 4 corners of the screen starting in the top-left and moving
@@ -106,14 +113,14 @@ class BrickWall:
         :param text: str representing the text to be printed
         :param pos_index: index 0-4 representing the index to print
         :param col: colour of the text as a rgb tuple
-        :return: None
+        :return: rectangle that defines the bounds of the font
         """
         if not 1 <= pos_index <= 4:
             print(f'ERROR: invalid corner position: {pos_index}')
-            return
+            return pygame.Rect(0, 0, 0, 0)
 
         fw, fh = self.font.size(text)  # fw: font width,  fh: font height
-        surface = self.font.render(text, True, col)
+        surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
         if pos_index == 1:
             pos = (self.TEXT_BORDER, self.TEXT_BORDER)
         elif pos_index == 2:
@@ -122,7 +129,9 @@ class BrickWall:
             pos = ((self.width - fw - self.TEXT_BORDER), (self.height - fh - self.TEXT_BORDER))
         else:
             pos = (self.TEXT_BORDER, (self.height - fh - self.TEXT_BORDER))
-        self.screen.blit(surface, pos)
+        bounds = pygame.Rect(pos[0], pos[1], fw - 1, fh - 1)
+        self.background.blit(surface, pos)
+        return bounds
 
 
 if __name__ == '__main__':

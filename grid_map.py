@@ -57,7 +57,7 @@ class GridMap:
                 mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
             return -1, -1
         norm_coord = mouse_coords[0] - self.bounds[0], mouse_coords[1] - self.bounds[1]
-        return 1 + norm_coord[0] // self.cell_size, 1 + norm_coord[1] // self.cell_size
+        return norm_coord[0] // self.cell_size, norm_coord[1] // self.cell_size
 
     def draw_grid(self, border_colour: Tuple[int] = (0, 0, 0)):
         """

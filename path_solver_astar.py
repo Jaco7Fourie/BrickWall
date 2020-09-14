@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import List
+from typing import List, Tuple
 from depq import DEPQ
 
 from grid_cell import GridCell
@@ -69,6 +69,7 @@ class PathSolverAStar:
         self.start_cell.g_score = 0
 
         self.done = False
+        self.visited = 0
 
     def euclidean_neighbours(self, cell: GridCell) -> List[GridCell]:
         """
@@ -102,35 +103,38 @@ class PathSolverAStar:
                     lst.append(self.cell_grid[r][c])
         return lst
         
-    def next_step(self) -> str:
+    def next_step(self) -> Tuple[str, List[Tuple[int, int, int, int]]]:
         """
         performs the next step in the algorithm and updates the cells accordingly
-        :return: a status message
+        :return: a Tuple of (a status message, list of bounding rectangles for block that need to be updated)
         """
         updated = 0
         inserted = 0
+        updates = []
         if self.done or self.openSet.is_empty():
             self.done = True
-            return 'Done'
+            return 'No path found', []
         # remove the smallest f_score
         current = self.openSet.poplast()[0]
-        msg = f'current = {current.coord}'
+        # we want the reverse printed
+        msg = f'current = {current.coord[-1::-1]}'
         if current.coord == self.goal_cell.coord:
             current.cell_type = 'goal'
-            current.draw_cell()
+            updates.append(current.draw_cell())
             msg = f'goal reached at {self.goal_cell.coord}. Total distance: {current.f_score}'
             # trace the path
             while current.comes_from is not None:
                 current = current.comes_from
                 if current.cell_type != 'start':
                     current.cell_type = 'path'
-                current.draw_cell()
+                updates.append(current.draw_cell())
             self.done = True
-            return msg
+            return msg, updates
 
         if current.cell_type != 'start':
             current.cell_type = 'visited'
-            current.draw_cell()
+            updates.append(current.draw_cell())
+            self.visited += 1
         for neighbour in self.neighbours(current):
             t_score = current.g_score + neighbour.cost
             updated = 0
@@ -145,7 +149,7 @@ class PathSolverAStar:
                     self.openSet.insert(neighbour, neighbour.f_score)
                     # self.nodes_table[neighbour.coord] = elem
                     neighbour.cell_type = 'open_set'
-                    neighbour.draw_cell()
+                    updates.append(neighbour.draw_cell())
                     inserted += 1
                 else:
                     # elem = Node(neighbour)
@@ -154,4 +158,4 @@ class PathSolverAStar:
                     # self.openSet.decrease_key(self.nodes_table[neighbour.coord], neighbour)
                     # self.nodes_table[neighbour.coord] = elem
                     updated += 1
-        return msg + f' -- ({updated} updated: {inserted} inserted)'
+        return msg + f' -- ({updated} updated: {inserted} inserted)', updates
