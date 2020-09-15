@@ -32,7 +32,7 @@ class PathSolverAStar:
     """
 
     def __init__(self, cell_grid: List[List[GridCell]], start_cell: GridCell, goal_cell: GridCell,
-                 heuristic: str = 'euclidean', movement: str = 'manhattan'):
+                 heuristic: str = 'euclidean', movement: str = 'manhattan', heuristic_weight: float = 1):
         """
         Creates a new path solver and initialises the start and end point
         :param cell_grid: The cell grid
@@ -40,11 +40,14 @@ class PathSolverAStar:
         :param goal_cell:  The goal cell
         :param heuristic:  The heuristic distance measure to use. One of {'euclidean', 'manhattan'}
         :param movement: The way the agent is allowed to move. One of {'euclidean', 'manhattan'}
+        :param heuristic_weight: The weight factor to multiply the heuristic by.
+        Larger values make the algorithm more greedy. Values >1 will not guarantee the shortest path.
         """
         self.cell_grid = cell_grid
         self.openSet = DEPQ(maxlen=len(cell_grid)*len(cell_grid[0]))
         self.start_cell = start_cell
         self.goal_cell = goal_cell
+        self.heuristic_weight = heuristic_weight
         self.openSet.insert(start_cell, start_cell.f_score)
         # a hash table to keep track of nodes in the Fibonacci heap
         # self.nodes_table = {start_cell.coord: elem}
@@ -143,7 +146,7 @@ class PathSolverAStar:
                 # this is a better path to the neighbour so update the g_score
                 neighbour.comes_from = current
                 neighbour.g_score = t_score
-                neighbour.f_score = t_score + self.heuristic(neighbour, self.goal_cell)
+                neighbour.f_score = t_score + self.heuristic(neighbour, self.goal_cell) * self.heuristic_weight
                 # only add the neighbour to the open set if it is not already in the open set
                 if neighbour not in self.openSet:
                     self.openSet.insert(neighbour, neighbour.f_score)

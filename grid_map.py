@@ -59,7 +59,7 @@ class GridMap:
         norm_coord = mouse_coords[0] - self.bounds[0], mouse_coords[1] - self.bounds[1]
         return norm_coord[0] // self.cell_size, norm_coord[1] // self.cell_size
 
-    def draw_grid(self, border_colour: Tuple[int] = (0, 0, 0)):
+    def draw_grid(self, border_colour: Tuple[int, int, int] = (0, 0, 0)):
         """
         Draws the grid borders to the area defined by bounding_rect and grid_size
         :param border_colour: Grid colour as (R, G, B)
@@ -160,7 +160,7 @@ class GridMap:
         self.cell_grid[14][10].cell_type = 'wall'
         self.cell_grid[15][10].cell_type = 'wall'
 
-    def init_grid(self, start_coords: Tuple[int, int] = (2, 2),
+    def init_grid(self, start_coords: Tuple[int, int] = (1, 1),
                   goal_coords: Tuple[int, int] = (-2, -2),
                   random_walls_ratio: float = 0.0) -> Tuple[GridCell, GridCell]:
         """
