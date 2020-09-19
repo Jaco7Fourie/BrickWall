@@ -49,14 +49,13 @@ class GridMap:
 
     def cell_coords_from_mouse_coords(self, mouse_coords: Tuple[int, int]) -> Tuple[int, int]:
         """
-        converts mouse coordinates to cell grid coordinates. For coordinates that fall outside of bounds it finds the
-        closest cell
+        converts mouse coordinates to cell grid coordinates.
         :param mouse_coords: tuple of mouse x and y coordinate
         :return: tuple of grid coordinate
         """
-        # if mouse_coords[0] < self.bounds[0] or mouse_coords[0] > self.bounds[2] or \
-        #         mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
-        #     return -1, -1
+        if mouse_coords[0] < self.bounds[0] or mouse_coords[0] > self.bounds[2] or \
+                mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
+            return -1, -1
         norm_coord = max(mouse_coords[0] - self.bounds[0], 0), max(mouse_coords[1] - self.bounds[1], 0)
         return min(norm_coord[0] // self.cell_size, self.grid_size[1] - 1), \
                min(norm_coord[1] // self.cell_size, self.grid_size[0] - 1)

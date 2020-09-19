@@ -22,7 +22,7 @@ class BrickWall:
     TEXT_SIZE = 16
     TEXT_GUTTER = TEXT_SIZE + 4
     # the max length of status messages
-    T_SIZE = 70
+    T_SIZE = 60
 
     def __init__(self, width: int = 1280, height: int = 800,
                  fps: int = 120, grid_size: Tuple[int, int] = (93, 170), random_walls: float = 0.35):
@@ -59,6 +59,7 @@ class BrickWall:
         self.random_walls = random_walls
 
         self.solver = None
+        self.heuristic = 'euclidean'
         self.grid_map = None
         self.s_cell = None
         self.g_cell = None
@@ -71,6 +72,7 @@ class BrickWall:
 
         # GUI elements
         self.toggle_draw_button = None
+        self.heuristic_menu = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -78,13 +80,19 @@ class BrickWall:
         pygame.event.set_allowed(pygame.KEYDOWN)
         pygame.event.set_allowed(pygame.KEYUP)
         pygame.event.set_allowed(pygame.MOUSEBUTTONDOWN)
+        pygame.event.set_allowed(pygame.USEREVENT)
 
     def add_gui(self):
         pos = (self.TEXT_BORDER + self.button_start, self.TEXT_BORDER)
-        size = (200, self.TEXT_GUTTER - self.TEXT_BORDER)
+        size = (250, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.toggle_draw_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
                                                                text='Toggle draw mode (walls)',
                                                                manager=self.manager)
+        pos = (pos[0] + size[0] + 1, self.TEXT_BORDER)
+        self.heuristic_menu = pygame_gui.elements.UIDropDownMenu(['heuristic = euclidean', 'heuristic = manhattan'],
+                                                                 relative_rect=pygame.Rect(pos, size),
+                                                                 starting_option='heuristic = euclidean',
+                                                                 manager=self.manager)
 
     def reset_run(self) -> List[Any]:
         """
@@ -93,7 +101,7 @@ class BrickWall:
         """
         updates = self.grid_map.reset_grid()
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic='euclidean', movement='manhattan', heuristic_weight=2)
+                                      heuristic=self.heuristic, movement='manhattan', heuristic_weight=2)
         self.running = True
         self.paused = False
         self.step = False
@@ -113,7 +121,7 @@ class BrickWall:
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic='euclidean', movement='manhattan', heuristic_weight=2)
+                                      heuristic=self.heuristic, movement='manhattan', heuristic_weight=2)
         self.screen.blit(self.background, (0, 0))
         self.running = True
         self.paused = False
@@ -190,12 +198,26 @@ class BrickWall:
                     self.g_cell.f_score = float('inf')
                     self.g_cell.g_score = float('inf')
                     bounds.extend(self.reset_run())
+            elif event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.toggle_draw_button:
+                        self.draw_mode_walls = not self.draw_mode_walls
+                        mode = 'walls' if self.draw_mode_walls else 'start/goal'
+                        text = f'Toggle draw mode ({mode})'
+                        self.toggle_draw_button.set_text(text)
+                elif event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                    if event.ui_element == self.heuristic_menu:
+                        self.heuristic = self.heuristic_menu.selected_option
+                        print(self.heuristic)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
+                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    if mouse_x == -1 or mouse_y == -1:
+                        self.manager.process_events(event)
+                        continue
                     # also reset the scores for the goal cell
                     self.g_cell.f_score = float('inf')
                     self.g_cell.g_score = float('inf')
-                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
                     self.s_cell.cell_type = 'empty'
                     self.s_cell.f_score = float('inf')
                     self.s_cell.g_score = float('inf')
@@ -208,6 +230,9 @@ class BrickWall:
                     bounds.extend(self.reset_run())
                 elif event.button == pygame.BUTTON_RIGHT and not self.draw_mode_walls:
                     mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    if mouse_x == -1 or mouse_y == -1:
+                        self.manager.process_events(event)
+                        continue
                     self.g_cell.cell_type = 'empty'
                     self.g_cell.f_score = float('inf')
                     self.g_cell.g_score = float('inf')
@@ -218,13 +243,7 @@ class BrickWall:
                     self.g_cell.g_score = float('inf')
                     bounds.append(self.g_cell.draw_cell())
                     bounds.extend(self.reset_run())
-            elif event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == self.toggle_draw_button:
-                        self.draw_mode_walls = not self.draw_mode_walls
-                        mode = 'walls' if self.draw_mode_walls else 'start/goal'
-                        text = f'Toggle draw mode ({mode})'
-                        self.toggle_draw_button.text = text
+
             self.manager.process_events(event)
 
         self.manager.update(time_delta)
@@ -232,11 +251,15 @@ class BrickWall:
             (button1, button2, button3) = pygame.mouse.get_pressed()
             if button1:
                 mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                if mouse_x == -1 or mouse_y == -1:
+                    return
                 if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'empty':
                     self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'wall'
                     bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
             elif button3:
                 mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                if mouse_x == -1 or mouse_y == -1:
+                    return
                 if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'wall':
                     self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
                     bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
