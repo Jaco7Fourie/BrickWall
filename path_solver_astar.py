@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import List, Tuple
+from typing import List, Tuple, Any
 from depq import DEPQ
 
 from grid_cell import GridCell
@@ -106,17 +106,19 @@ class PathSolverAStar:
                     lst.append(self.cell_grid[r][c])
         return lst
         
-    def next_step(self) -> Tuple[str, List[Tuple[int, int, int, int]]]:
+    def next_step(self, updates: List[Any]) -> str:
         """
         performs the next step in the algorithm and updates the cells accordingly
-        :return: a Tuple of (a status message, list of bounding rectangles for block that need to be updated)
+        :param updates: a list of rectangles that represent limits of the background that need to be updated at the
+        next draw
+        :return: a status message
         """
         updated = 0
         inserted = 0
-        updates = []
+        # updates = []
         if self.done or self.openSet.is_empty():
             self.done = True
-            return 'No path found', []
+            return 'No path found'
         # remove the smallest f_score
         current = self.openSet.poplast()[0]
         # we want the reverse printed
@@ -132,7 +134,7 @@ class PathSolverAStar:
                     current.cell_type = 'path'
                 updates.append(current.draw_cell())
             self.done = True
-            return msg, updates
+            return msg
 
         if current.cell_type != 'start':
             current.cell_type = 'visited'
@@ -161,4 +163,4 @@ class PathSolverAStar:
                     # self.openSet.decrease_key(self.nodes_table[neighbour.coord], neighbour)
                     # self.nodes_table[neighbour.coord] = elem
                     updated += 1
-        return msg + f' -- ({updated} updated: {inserted} inserted)', updates
+        return msg + f' -- ({updated} updated: {inserted} inserted)'

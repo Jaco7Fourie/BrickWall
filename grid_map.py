@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Any
 from random import random
 from grid_cell import GridCell
 import pygame
@@ -49,15 +49,17 @@ class GridMap:
 
     def cell_coords_from_mouse_coords(self, mouse_coords: Tuple[int, int]) -> Tuple[int, int]:
         """
-        converts mouse coordinates to cell grid coordinates
+        converts mouse coordinates to cell grid coordinates. For coordinates that fall outside of bounds it finds the
+        closest cell
         :param mouse_coords: tuple of mouse x and y coordinate
         :return: tuple of grid coordinate
         """
-        if mouse_coords[0] < self.bounds[0] or mouse_coords[0] > self.bounds[2] or \
-                mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
-            return -1, -1
-        norm_coord = mouse_coords[0] - self.bounds[0], mouse_coords[1] - self.bounds[1]
-        return norm_coord[0] // self.cell_size, norm_coord[1] // self.cell_size
+        # if mouse_coords[0] < self.bounds[0] or mouse_coords[0] > self.bounds[2] or \
+        #         mouse_coords[1] < self.bounds[1] or mouse_coords[1] > self.bounds[3]:
+        #     return -1, -1
+        norm_coord = max(mouse_coords[0] - self.bounds[0], 0), max(mouse_coords[1] - self.bounds[1], 0)
+        return min(norm_coord[0] // self.cell_size, self.grid_size[1] - 1), \
+               min(norm_coord[1] // self.cell_size, self.grid_size[0] - 1)
 
     def draw_grid(self, border_colour: Tuple[int, int, int] = (0, 0, 0)):
         """
@@ -181,3 +183,18 @@ class GridMap:
         self.cell_grid[start_coords[0]][start_coords[1]].cell_type = 'start'
         self.cell_grid[goal_coords[0]][goal_coords[1]].cell_type = 'goal'
         return self.cell_grid[start_coords[0]][start_coords[1]], self.cell_grid[goal_coords[0]][goal_coords[1]]
+
+    def reset_grid(self) -> List[Any]:
+        """
+        Cleans all non-wall, non-goal, and non-start cells and redraws the grid
+        :return: list of rectangles to indicate which parts of the background needs redrawing
+        """
+        updates = []
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                if self.cell_grid[i][j].cell_type == 'path' or self.cell_grid[i][j].cell_type == 'visited' or \
+                        self.cell_grid[i][j].cell_type == 'open_set':
+                    self.cell_grid[i][j].reset_scores()
+                    updates.append(self.cell_grid[i][j].draw_cell())
+
+        return updates

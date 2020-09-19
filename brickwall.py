@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List, Any
 
 import pygame
 from screeninfo import get_monitors
@@ -20,6 +20,8 @@ class BrickWall:
     TEXT_BORDER = 2
     TEXT_SIZE = 16
     TEXT_GUTTER = TEXT_SIZE + 4
+    # the max length of status messages
+    T_SIZE = 70
 
     def __init__(self, width: int = 1280, height: int = 800,
                  fps: int = 120, grid_size: Tuple[int, int] = (93, 170), random_walls: float = 0.35):
@@ -50,25 +52,48 @@ class BrickWall:
 
         self.solver = None
         self.grid_map = None
+        self.s_cell = None
+        self.g_cell = None
         self.running = True
         self.paused = False
         self.step = False
+        # if true left-click draws walls and right_click erases them.
+        # If false left-click moves start point and right click moves goal
+        self.draw_mode_walls = True
 
         pygame.event.set_allowed(None)
         pygame.event.set_allowed(pygame.QUIT)
         pygame.event.set_allowed(pygame.KEYDOWN)
         pygame.event.set_allowed(pygame.KEYUP)
+        pygame.event.set_allowed(pygame.MOUSEBUTTONDOWN)
+
+    def reset_run(self) -> List[Any]:
+        """
+        Starts a new run using the same grid
+        :return: list of rectangles to indicate which parts of the background needs redrawing
+        """
+        updates = self.grid_map.reset_grid()
+        self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
+                                      heuristic='euclidean', movement='manhattan', heuristic_weight=2)
+        self.running = True
+        self.paused = False
+        self.step = False
+        return updates
 
     def start_new_run(self):
+        """
+        Starts a new run on a new random grid
+        :return:
+        """
         self.background.fill(self.BACKGROUND_COLOUR)
         self.grid_map = GridMap(self.background,
                            [self.TEXT_BORDER, self.TEXT_GUTTER + self.TEXT_BORDER,
                             self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER - self.TEXT_BORDER],
                            self.grid_size)
         self.grid_map.draw_grid()
-        s_cell, g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
+        self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        self.solver = PathSolverAStar(self.grid_map.cell_grid, s_cell, g_cell,
+        self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
                                       heuristic='euclidean', movement='manhattan', heuristic_weight=2)
         self.screen.blit(self.background, (0, 0))
         self.running = True
@@ -80,29 +105,16 @@ class BrickWall:
         The mainloop
         """
         msg = ''
-        ui_msg = ''
         bounds = []
         self.start_new_run()
         self.background.convert()
         while self.running:
             self.clock.tick(self.fps)
-            
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.running = False
-                    elif event.key == pygame.K_SPACE:
-                        self.paused = not self.paused
-                    elif event.key == pygame.K_r:
-                        self.start_new_run()
-                    elif event.key == pygame.K_s:
-                        self.step = True
-                        self.paused = False
+
+            self.process_events(bounds)
             # pygame.event.pump()
             if not self.solver.done and not self.paused:
-                msg, bounds = self.solver.next_step()
+                msg = self.solver.next_step(bounds)
             if self.step:
                 self.paused = True
                 self.step = False
@@ -124,11 +136,74 @@ class BrickWall:
             bounds.append(self.draw_text(f'visited: {self.solver.visited} candidates: {self.solver.openSet.size()}',
                                          2, self.TEXT_COLOUR))
             pygame.display.flip()
-            #pygame.display.update(bounds)
+            # pygame.display.update(bounds)
             for r in bounds:
                 self.screen.blit(self.background, r, r)
+            bounds = []
 
         pygame.quit()
+
+    def process_events(self, bounds: List[Any]):
+        """
+        Processes the event queue
+        :param bounds: list of rectangles to indicate which parts of the background need to be redrawn
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.running = False
+                elif event.key == pygame.K_SPACE:
+                    self.paused = not self.paused
+                elif event.key == pygame.K_r:
+                    self.start_new_run()
+                elif event.key == pygame.K_s:
+                    self.step = True
+                    self.paused = False
+                elif event.key == pygame.K_d:
+                    self.draw_mode_walls = not self.draw_mode_walls
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
+                    # also reset the scores for the goal cell
+                    self.g_cell.f_score = float('inf')
+                    self.g_cell.g_score = float('inf')
+                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    self.s_cell.cell_type = 'empty'
+                    self.s_cell.f_score = float('inf')
+                    self.s_cell.g_score = float('inf')
+                    bounds.append(self.s_cell.draw_cell())
+                    self.s_cell = self.grid_map.cell_grid[mouse_y][mouse_x]
+                    self.s_cell.cell_type = 'start'
+                    self.s_cell.f_score = float('inf')
+                    self.s_cell.g_score = float('inf')
+                    bounds.append(self.s_cell.draw_cell())
+                    bounds.extend(self.reset_run())
+                elif event.button == pygame.BUTTON_RIGHT and not self.draw_mode_walls:
+                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    self.g_cell.cell_type = 'empty'
+                    self.g_cell.f_score = float('inf')
+                    self.g_cell.g_score = float('inf')
+                    bounds.append(self.g_cell.draw_cell())
+                    self.g_cell = self.grid_map.cell_grid[mouse_y][mouse_x]
+                    self.g_cell.cell_type = 'goal'
+                    self.g_cell.f_score = float('inf')
+                    self.g_cell.g_score = float('inf')
+                    bounds.append(self.g_cell.draw_cell())
+                    bounds.extend(self.reset_run())
+
+            if self.draw_mode_walls:
+                (button1, button2, button3) = pygame.mouse.get_pressed()
+                if button1:
+                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'empty':
+                        self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'wall'
+                        bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
+                elif button3:
+                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                    if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'wall':
+                        self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
+                        bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
@@ -144,15 +219,25 @@ class BrickWall:
             print(f'ERROR: invalid corner position: {pos_index}')
             return pygame.Rect(0, 0, 0, 0)
 
-        fw, fh = self.font.size(text)  # fw: font width,  fh: font height
-        surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
         if pos_index == 1:
+            text = f'{text:<{self.T_SIZE}}'
+            fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+            surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
             pos = (self.TEXT_BORDER, self.TEXT_BORDER)
         elif pos_index == 2:
+            text = f'{text:>{self.T_SIZE}}'
+            fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+            surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
             pos = ((self.width - fw - self.TEXT_BORDER), self.TEXT_BORDER)
         elif pos_index == 3:
+            text = f'{text:>{self.T_SIZE}}'
+            fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+            surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
             pos = ((self.width - fw - self.TEXT_BORDER), (self.height - fh - self.TEXT_BORDER))
         else:
+            text = f'{text:<{self.T_SIZE}}'
+            fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+            surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
             pos = (self.TEXT_BORDER, (self.height - fh - self.TEXT_BORDER))
         bounds = pygame.Rect(pos[0], pos[1], fw, fh)
         self.background.blit(surface, pos)

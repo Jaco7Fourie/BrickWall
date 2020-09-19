@@ -39,6 +39,18 @@ class GridCell:
         self.cost = 1
         self.comes_from = None
 
+    def reset_scores(self):
+        """
+        resets the scores of this cell without changing the cell coordinates or drawing bounds
+        :return:
+        """
+        self.f_score = float('inf')
+        self.g_score = float('inf')
+        # currently all cells have a cost of 1 but we leave this here as placeholder for future advanced terrain cells
+        self.cost = 1
+        self.comes_from = None
+        self.cell_type = 'empty'
+
     def __lt__(self, other):
         return self.f_score < other.f_score
 
@@ -78,7 +90,7 @@ class GridCell:
         elif self.cell_type == 'goal':
             return pygame.draw.rect(self.surf, GridCell.GOAL_COLOUR, self.draw_bounds)
         elif self.cell_type == 'empty':
-            pass  # pygame.draw.rect(self.surf, GridCell.BACKGROUND_COLOUR, self.bounds)
+            return pygame.draw.rect(self.surf, GridCell.BACKGROUND_COLOUR, self.draw_bounds)
         else:
             print(f'Invalid Cell type: {self.cell_type}')
             return pygame.Rect(0, 0, 0, 0)
