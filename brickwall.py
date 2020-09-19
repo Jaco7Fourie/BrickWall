@@ -1,6 +1,7 @@
 from typing import Tuple, List, Any
 
 import pygame
+import pygame_gui
 from screeninfo import get_monitors
 
 from grid_map import GridMap
@@ -43,8 +44,15 @@ class BrickWall:
         self.background = pygame.Surface(self.screen.get_size()).convert()
         self.background.fill(self.BACKGROUND_COLOUR)
         self.clock = pygame.time.Clock()
+        self.manager = pygame_gui.UIManager((self.width, self.height))
         self.fps = fps
+
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
+        text = '???'
+        text = f'{text:<{self.T_SIZE}}'
+        fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+        self.button_start = fw
+
         # some lost background is inevitable unless we fix the screen size and grid size
         # I prefer to customise this. Current value based on on w/d = 1.828
         self.grid_size = grid_size
@@ -61,11 +69,22 @@ class BrickWall:
         # If false left-click moves start point and right click moves goal
         self.draw_mode_walls = True
 
+        # GUI elements
+        self.toggle_draw_button = None
+        self.add_gui()
+        # events
         pygame.event.set_allowed(None)
         pygame.event.set_allowed(pygame.QUIT)
         pygame.event.set_allowed(pygame.KEYDOWN)
         pygame.event.set_allowed(pygame.KEYUP)
         pygame.event.set_allowed(pygame.MOUSEBUTTONDOWN)
+
+    def add_gui(self):
+        pos = (self.TEXT_BORDER + self.button_start, self.TEXT_BORDER)
+        size = (200, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.toggle_draw_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                               text='Toggle draw mode (walls)',
+                                                               manager=self.manager)
 
     def reset_run(self) -> List[Any]:
         """
@@ -87,9 +106,9 @@ class BrickWall:
         """
         self.background.fill(self.BACKGROUND_COLOUR)
         self.grid_map = GridMap(self.background,
-                           [self.TEXT_BORDER, self.TEXT_GUTTER + self.TEXT_BORDER,
-                            self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER - self.TEXT_BORDER],
-                           self.grid_size)
+                                [self.TEXT_BORDER, self.TEXT_GUTTER + self.TEXT_BORDER,
+                                 self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER - self.TEXT_BORDER],
+                                self.grid_size)
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
@@ -109,9 +128,9 @@ class BrickWall:
         self.start_new_run()
         self.background.convert()
         while self.running:
-            self.clock.tick(self.fps)
+            tick = self.clock.tick(self.fps)
 
-            self.process_events(bounds)
+            self.process_events(bounds, tick / 1000.0)
             # pygame.event.pump()
             if not self.solver.done and not self.paused:
                 msg = self.solver.next_step(bounds)
@@ -135,18 +154,21 @@ class BrickWall:
             bounds.append(self.draw_text(msg, 1, self.TEXT_COLOUR))
             bounds.append(self.draw_text(f'visited: {self.solver.visited} candidates: {self.solver.openSet.size()}',
                                          2, self.TEXT_COLOUR))
-            pygame.display.flip()
+
             # pygame.display.update(bounds)
             for r in bounds:
                 self.screen.blit(self.background, r, r)
+            self.manager.draw_ui(self.screen)
+            pygame.display.flip()
             bounds = []
 
         pygame.quit()
 
-    def process_events(self, bounds: List[Any]):
+    def process_events(self, bounds: List[Any], time_delta: float):
         """
         Processes the event queue
         :param bounds: list of rectangles to indicate which parts of the background need to be redrawn
+        :param time_delta: a time delta value used by the ui manager
         """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -163,6 +185,11 @@ class BrickWall:
                     self.paused = False
                 elif event.key == pygame.K_d:
                     self.draw_mode_walls = not self.draw_mode_walls
+                elif event.key == pygame.K_t:
+                    # reset the scores for the goal cell
+                    self.g_cell.f_score = float('inf')
+                    self.g_cell.g_score = float('inf')
+                    bounds.extend(self.reset_run())
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
                     # also reset the scores for the goal cell
@@ -191,19 +218,28 @@ class BrickWall:
                     self.g_cell.g_score = float('inf')
                     bounds.append(self.g_cell.draw_cell())
                     bounds.extend(self.reset_run())
+            elif event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.toggle_draw_button:
+                        self.draw_mode_walls = not self.draw_mode_walls
+                        mode = 'walls' if self.draw_mode_walls else 'start/goal'
+                        text = f'Toggle draw mode ({mode})'
+                        self.toggle_draw_button.text = text
+            self.manager.process_events(event)
 
-            if self.draw_mode_walls:
-                (button1, button2, button3) = pygame.mouse.get_pressed()
-                if button1:
-                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
-                    if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'empty':
-                        self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'wall'
-                        bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
-                elif button3:
-                    mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
-                    if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'wall':
-                        self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
-                        bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
+        self.manager.update(time_delta)
+        if self.draw_mode_walls:
+            (button1, button2, button3) = pygame.mouse.get_pressed()
+            if button1:
+                mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'empty':
+                    self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'wall'
+                    bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
+            elif button3:
+                mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
+                if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'wall':
+                    self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
+                    bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
@@ -248,4 +284,4 @@ if __name__ == '__main__':
     # get screen resolution
     m = get_monitors()[0]
     # call with width of window and fps
-    BrickWall(width=int(m.width - m.width*0.1), height=int(m.height - m.height*0.1)).run()
+    BrickWall(width=int(m.width - m.width * 0.1), height=int(m.height - m.height * 0.1)).run()
