@@ -67,7 +67,7 @@ class GridMap:
         """
         # draw large square to define extents of grid
         pygame.draw.rect(self.surf, border_colour, (self.bounds[0], self.bounds[1],
-                                                    self.bounds[2] - self.bounds[0], self.bounds[3] - self.bounds[1]),
+                                                    self.bounds[2] - self.bounds[0]+1, self.bounds[3] - self.bounds[1]+1),
                          self.BORDER_SIZE)
         # Draw horizontal bars
         x_min, x_max = self.bounds[0], self.bounds[2]

@@ -17,21 +17,27 @@ class BrickWall:
     BACKGROUND_COLOUR = (255, 255, 255)  # (246, 240, 237)  # Isabelline
     TEXT_COLOUR = (7, 59, 76)  # Midnight green eagle green
     HIGHLIGHT_COLOUR = (250, 250, 25)
+    # background size
+    BACKGROUND_SIZE = (720, 1440)
+    # background size
+    UI_SIZE = (760, 200)
     # text border size
     TEXT_BORDER = 2
+    # Font size
     TEXT_SIZE = 16
+    # Text area in UI
     TEXT_GUTTER = TEXT_SIZE + 4
     # the max length of status messages
     T_SIZE = 60
 
-    def __init__(self, width: int = 1280, height: int = 800,
-                 fps: int = 120, grid_size: Tuple[int, int] = (93, 170), random_walls: float = 0.35):
+    def __init__(self, width: int = 1640, height: int = 764,
+                 fps: int = 120, rows: int = 60, random_walls: float = 0.35):
         """
         Initialize pygame, window, background, font,...
         :param width: the width of the main app window
         :param height: the height of the main app window
         :param fps: the frame rate in frames per second
-        :param grid_size: The size of the grid as tuple of (rows, columns)
+        :param rows: The number of rows in the grid (columns get calculated based on this)
         :param random_walls: probability of a cell randomly becoming a wall to generate random rooms
         """
 
@@ -48,14 +54,16 @@ class BrickWall:
         self.fps = fps
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
-        text = '???'
-        text = f'{text:<{self.T_SIZE}}'
-        fw, fh = self.font.size(text)  # fw: font width,  fh: font height
-        self.button_start = fw
+        # text = '???'
+        # text = f'{text:<{self.T_SIZE}}'
+        # fw, fh = self.font.size(text)  # fw: font width,  fh: font height
+        # self.button_width = fw
 
-        # some lost background is inevitable unless we fix the screen size and grid size
-        # I prefer to customise this. Current value based on on w/d = 1.828
-        self.grid_size = grid_size
+        # check rows
+        if self.BACKGROUND_SIZE[0] % rows != 0:
+            print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
+            rows = 120
+        self.grid_size = (rows, rows * 2)
         self.random_walls = random_walls
 
         self.solver = None
@@ -73,6 +81,10 @@ class BrickWall:
         # GUI elements
         self.toggle_draw_button = None
         self.heuristic_menu = None
+        self.reset_button = None
+        self.reset_search_button = None
+        self.grid_rows_label = None
+        self.grid_rows_label_text_box = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -83,16 +95,39 @@ class BrickWall:
         pygame.event.set_allowed(pygame.USEREVENT)
 
     def add_gui(self):
-        pos = (self.TEXT_BORDER + self.button_start, self.TEXT_BORDER)
-        size = (250, self.TEXT_GUTTER - self.TEXT_BORDER)
+        gui_borders = (
+            self.TEXT_BORDER + self.BACKGROUND_SIZE[1] + 2, self.TEXT_BORDER, self.width - 1, self.height - 1)
+        pos = gui_borders[0:2]
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.toggle_draw_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
-                                                               text='Toggle draw mode (walls)',
+                                                               text='Draw mode (walls)',
                                                                manager=self.manager)
-        pos = (pos[0] + size[0] + 1, self.TEXT_BORDER)
-        self.heuristic_menu = pygame_gui.elements.UIDropDownMenu(['heuristic = euclidean', 'heuristic = manhattan'],
+        pos = (pos[0], pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.heuristic_menu = pygame_gui.elements.UIDropDownMenu(['euclidean', 'manhattan'],
                                                                  relative_rect=pygame.Rect(pos, size),
-                                                                 starting_option='heuristic = euclidean',
+                                                                 starting_option='euclidean',
                                                                  manager=self.manager)
+        pos = (pos[0], pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                         text='Reset maze',
+                                                         manager=self.manager)
+        pos = (pos[0], pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.reset_search_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                                text='Reset search',
+                                                                manager=self.manager)
+        pos = (pos[0] + 20, pos[1] + 20)
+        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.grid_rows_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                                           text='Grid rows',
+                                                           manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.grid_rows_label = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                   manager=self.manager)
+        self.grid_rows_label.set_text(str(self.grid_size[0]))
 
     def reset_run(self) -> List[Any]:
         """
@@ -114,8 +149,10 @@ class BrickWall:
         """
         self.background.fill(self.BACKGROUND_COLOUR)
         self.grid_map = GridMap(self.background,
-                                [self.TEXT_BORDER, self.TEXT_GUTTER + self.TEXT_BORDER,
-                                 self.width - self.TEXT_BORDER, self.height - self.TEXT_GUTTER - self.TEXT_BORDER],
+                                [self.TEXT_BORDER,
+                                 self.TEXT_GUTTER + self.TEXT_BORDER,
+                                 self.TEXT_BORDER + self.BACKGROUND_SIZE[1],
+                                 self.TEXT_GUTTER + self.TEXT_BORDER + self.BACKGROUND_SIZE[0]],
                                 self.grid_size)
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
@@ -164,6 +201,10 @@ class BrickWall:
                                          2, self.TEXT_COLOUR))
 
             # pygame.display.update(bounds)
+            # add ui area to bounds
+            gui_borders = (self.TEXT_BORDER + self.BACKGROUND_SIZE[1], self.TEXT_BORDER,
+                           self.UI_SIZE[1], self.UI_SIZE[1])
+            bounds.append(gui_borders)
             for r in bounds:
                 self.screen.blit(self.background, r, r)
             self.manager.draw_ui(self.screen)
@@ -203,12 +244,22 @@ class BrickWall:
                     if event.ui_element == self.toggle_draw_button:
                         self.draw_mode_walls = not self.draw_mode_walls
                         mode = 'walls' if self.draw_mode_walls else 'start/goal'
-                        text = f'Toggle draw mode ({mode})'
+                        text = f'Draw mode ({mode})'
                         self.toggle_draw_button.set_text(text)
+                    elif event.ui_element == self.reset_button:
+                        self.start_new_run()
+                    elif event.ui_element == self.reset_search_button:
+                        # reset the scores for the goal cell
+                        self.g_cell.f_score = float('inf')
+                        self.g_cell.g_score = float('inf')
+                        bounds.extend(self.reset_run())
                 elif event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
                     if event.ui_element == self.heuristic_menu:
                         self.heuristic = self.heuristic_menu.selected_option
-                        print(self.heuristic)
+                        # reset the scores for the goal cell
+                        self.g_cell.f_score = float('inf')
+                        self.g_cell.g_score = float('inf')
+                        bounds.extend(self.reset_run())
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
                     mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
@@ -246,7 +297,6 @@ class BrickWall:
 
             self.manager.process_events(event)
 
-        self.manager.update(time_delta)
         if self.draw_mode_walls:
             (button1, button2, button3) = pygame.mouse.get_pressed()
             if button1:
@@ -263,6 +313,7 @@ class BrickWall:
                 if self.grid_map.cell_grid[mouse_y][mouse_x].cell_type == 'wall':
                     self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
                     bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
+        self.manager.update(time_delta)
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
@@ -287,12 +338,12 @@ class BrickWall:
             text = f'{text:>{self.T_SIZE}}'
             fw, fh = self.font.size(text)  # fw: font width,  fh: font height
             surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
-            pos = ((self.width - fw - self.TEXT_BORDER), self.TEXT_BORDER)
+            pos = (self.TEXT_BORDER + self.BACKGROUND_SIZE[1] - fw, self.TEXT_BORDER)
         elif pos_index == 3:
             text = f'{text:>{self.T_SIZE}}'
             fw, fh = self.font.size(text)  # fw: font width,  fh: font height
             surface = self.font.render(text, True, col, self.BACKGROUND_COLOUR)
-            pos = ((self.width - fw - self.TEXT_BORDER), (self.height - fh - self.TEXT_BORDER))
+            pos = (self.TEXT_BORDER + self.BACKGROUND_SIZE[1] - fw, (self.height - fh - self.TEXT_BORDER))
         else:
             text = f'{text:<{self.T_SIZE}}'
             fw, fh = self.font.size(text)  # fw: font width,  fh: font height
@@ -307,4 +358,5 @@ if __name__ == '__main__':
     # get screen resolution
     m = get_monitors()[0]
     # call with width of window and fps
-    BrickWall(width=int(m.width - m.width * 0.1), height=int(m.height - m.height * 0.1)).run()
+    BrickWall().run()
+    # BrickWall(width=int(m.width - m.width * 0.1), height=int(m.height - m.height * 0.1)).run()
