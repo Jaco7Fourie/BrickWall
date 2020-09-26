@@ -63,7 +63,7 @@ class BrickWall:
         if self.BACKGROUND_SIZE[0] % rows != 0:
             print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
             rows = 120
-        self.grid_size = (rows, rows * 2)
+        self.grid_size = [rows, rows * 2]
         self.random_walls = random_walls
 
         self.solver = None
@@ -125,9 +125,9 @@ class BrickWall:
                                                            manager=self.manager)
         pos = (pos[0] - 20, pos[1] + 20)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
-        self.grid_rows_label = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+        self.grid_rows_label_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
                                                                    manager=self.manager)
-        self.grid_rows_label.set_text(str(self.grid_size[0]))
+        self.grid_rows_label_text_box.set_text(str(self.grid_size[0]))
 
     def reset_run(self) -> List[Any]:
         """
@@ -239,6 +239,7 @@ class BrickWall:
                     self.g_cell.f_score = float('inf')
                     self.g_cell.g_score = float('inf')
                     bounds.extend(self.reset_run())
+
             elif event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.toggle_draw_button:
@@ -260,6 +261,12 @@ class BrickWall:
                         self.g_cell.f_score = float('inf')
                         self.g_cell.g_score = float('inf')
                         bounds.extend(self.reset_run())
+                elif event.user_type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+                    if event.ui_element == self.grid_rows_label_text_box:
+                        self.grid_size[0] = int(self.grid_rows_label_text_box.get_text())
+                        self.grid_size[1] = self.grid_size[0] * 2
+                        self.start_new_run()
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
                     mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())

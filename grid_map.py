@@ -11,7 +11,7 @@ class GridMap:
     # the size in pixels of borders between cells
     BORDER_SIZE = 1
 
-    def __init__(self, surface: pygame.Surface, bounding_rect: List[int], grid_size: Tuple[int, int]):
+    def __init__(self, surface: pygame.Surface, bounding_rect: List[int], grid_size: List[int]):
         """
         Initialises the grid as a list of GridCell objects
         :param surface: the background surface to draw on
