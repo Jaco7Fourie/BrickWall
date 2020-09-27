@@ -52,6 +52,7 @@ class BrickWall:
         self.clock = pygame.time.Clock()
         self.manager = pygame_gui.UIManager((self.width, self.height))
         self.fps = fps
+        self.heuristic_weight = 2
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
         # text = '???'
@@ -85,6 +86,10 @@ class BrickWall:
         self.reset_search_button = None
         self.grid_rows_label = None
         self.grid_rows_label_text_box = None
+        self.random_walls_label = None
+        self.random_walls_text_box = None
+        self.heuristic_weight_label = None
+        self.heuristic_weight_text_box = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -119,15 +124,35 @@ class BrickWall:
                                                                 text='Reset search',
                                                                 manager=self.manager)
         pos = (pos[0] + 20, pos[1] + 20)
-        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER)
+        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
         self.grid_rows_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
                                                            text='Grid rows',
                                                            manager=self.manager)
-        pos = (pos[0] - 20, pos[1] + 20)
+        pos = (pos[0] - 20, pos[1] + 30)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.grid_rows_label_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
-                                                                   manager=self.manager)
+                                                                            manager=self.manager)
         self.grid_rows_label_text_box.set_text(str(self.grid_size[0]))
+        pos = (pos[0] + 20, pos[1] + 30)
+        size = (160, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        self.random_walls_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                                              text='random walls weight',
+                                                              manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 30)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.random_walls_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                         manager=self.manager)
+        self.random_walls_text_box.set_text(str(self.random_walls))
+        pos = (pos[0] + 20, pos[1] + 30)
+        size = (160, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        self.heuristic_weight_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                                              text='heuristic weight',
+                                                              manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 30)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.heuristic_weight_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                         manager=self.manager)
+        self.heuristic_weight_text_box.set_text(str(self.heuristic_weight))
 
     def reset_run(self) -> List[Any]:
         """
@@ -136,7 +161,8 @@ class BrickWall:
         """
         updates = self.grid_map.reset_grid()
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic=self.heuristic, movement='manhattan', heuristic_weight=2)
+                                      heuristic=self.heuristic, movement='manhattan',
+                                      heuristic_weight=self.heuristic_weight)
         self.running = True
         self.paused = False
         self.step = False
@@ -158,7 +184,8 @@ class BrickWall:
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic=self.heuristic, movement='manhattan', heuristic_weight=2)
+                                      heuristic=self.heuristic, movement='manhattan',
+                                      heuristic_weight=self.heuristic_weight)
         self.screen.blit(self.background, (0, 0))
         self.running = True
         self.paused = False
@@ -263,9 +290,27 @@ class BrickWall:
                         bounds.extend(self.reset_run())
                 elif event.user_type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
                     if event.ui_element == self.grid_rows_label_text_box:
-                        self.grid_size[0] = int(self.grid_rows_label_text_box.get_text())
+                        try:
+                            self.grid_size[0] = int(self.grid_rows_label_text_box.get_text())
+                        except ValueError:
+                            print(f'Cannot parse value {self.grid_rows_label_text_box.get_text()}')
                         self.grid_size[1] = self.grid_size[0] * 2
                         self.start_new_run()
+                    elif event.ui_element == self.random_walls_text_box:
+                        try:
+                            self.random_walls = float(self.random_walls_text_box.get_text())
+                        except ValueError:
+                            print(f'Cannot parse value {self.random_walls_text_box.get_text()}')
+                        self.start_new_run()
+                    elif event.ui_element == self.heuristic_weight_text_box:
+                        try:
+                            self.heuristic_weight = float(self.heuristic_weight_text_box.get_text())
+                        except ValueError:
+                            print(f'Cannot parse value {self.heuristic_weight_text_box.get_text()}')
+                        # reset the scores for the goal cell
+                        self.g_cell.f_score = float('inf')
+                        self.g_cell.g_score = float('inf')
+                        bounds.extend(self.reset_run())
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
