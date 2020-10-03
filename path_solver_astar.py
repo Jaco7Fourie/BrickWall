@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import List, Tuple, Any
+from typing import List, Any
 from depq import DEPQ
 
 from grid_cell import GridCell

@@ -179,7 +179,7 @@ class BrickWall:
                                  self.TEXT_GUTTER + self.TEXT_BORDER,
                                  self.TEXT_BORDER + self.BACKGROUND_SIZE[1],
                                  self.TEXT_GUTTER + self.TEXT_BORDER + self.BACKGROUND_SIZE[0]],
-                                self.grid_size)
+                                self.grid_size, maze_grid=False)
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
@@ -188,7 +188,7 @@ class BrickWall:
                                       heuristic_weight=self.heuristic_weight)
         self.screen.blit(self.background, (0, 0))
         self.running = True
-        self.paused = False
+        self.paused = True
         self.step = False
 
     def run(self):

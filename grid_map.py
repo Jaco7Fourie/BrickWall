@@ -1,6 +1,6 @@
 from typing import Tuple, List, Any
 from random import random
-from grid_cell import GridCell
+from grid_cell import GridCell, WalledCell
 import pygame
 
 
@@ -11,17 +11,20 @@ class GridMap:
     # the size in pixels of borders between cells
     BORDER_SIZE = 1
 
-    def __init__(self, surface: pygame.Surface, bounding_rect: List[int], grid_size: List[int]):
+    def __init__(self, surface: pygame.Surface, bounding_rect: List[int],
+                 grid_size: List[int], maze_grid: bool = False):
         """
         Initialises the grid as a list of GridCell objects
         :param surface: the background surface to draw on
         :param bounding_rect: draw the grid only within these bounds
         (top_left_x, top_left_y, bottom_right_x, bottom_right_y)
         :param grid_size: number of cells as (rows, columns)
+        :param maze_grid: if true then this grid consists of WalledCell objects with walls as part of the cell
         """
         self.surf = surface
         self.bounds = bounding_rect
         self.grid_size = grid_size
+        self.maze_grid = maze_grid
 
         self.cell_size = self.__get_cell_size()
         # update the bounds based on square sells
@@ -31,12 +34,23 @@ class GridMap:
         for i in range(grid_size[0]):
             row_list = []
             for j in range(grid_size[1]):
-                x_min = j * self.cell_size + self.BORDER_SIZE
-                x_max = (j + 1) * self.cell_size - self.BORDER_SIZE
-                y_min = i * self.cell_size + self.BORDER_SIZE
-                y_max = (i + 1) * self.cell_size - self.BORDER_SIZE
-                row_list.append(GridCell(self.surf, 'empty', (self.bounds[0] + x_min, self.bounds[1] + y_min,
-                                                              self.bounds[0] + x_max, self.bounds[1] + y_max), (i, j)))
+
+                if self.maze_grid:
+                    x_min = j * self.cell_size
+                    x_max = (j + 1) * self.cell_size
+                    y_min = i * self.cell_size
+                    y_max = (i + 1) * self.cell_size
+                    row_list.append(WalledCell(self.surf, 'empty', (self.bounds[0] + x_min, self.bounds[1] + y_min,
+                                                                    self.bounds[0] + x_max, self.bounds[1] + y_max),
+                                               (i, j)))
+                else:
+                    x_min = j * self.cell_size + self.BORDER_SIZE
+                    x_max = (j + 1) * self.cell_size - self.BORDER_SIZE
+                    y_min = i * self.cell_size + self.BORDER_SIZE
+                    y_max = (i + 1) * self.cell_size - self.BORDER_SIZE
+                    row_list.append(GridCell(self.surf, 'empty', (self.bounds[0] + x_min, self.bounds[1] + y_min,
+                                                                  self.bounds[0] + x_max, self.bounds[1] + y_max),
+                                             (i, j)))
             self.cell_grid.append(row_list)
 
     def __get_cell_size(self) -> int:
@@ -64,23 +78,29 @@ class GridMap:
         """
         Draws the grid borders to the area defined by bounding_rect and grid_size
         :param border_colour: Grid colour as (R, G, B)
+
         """
-        # draw large square to define extents of grid
-        pygame.draw.rect(self.surf, border_colour, (self.bounds[0], self.bounds[1],
-                                                    self.bounds[2] - self.bounds[0]+1, self.bounds[3] - self.bounds[1]+1),
-                         self.BORDER_SIZE)
-        # Draw horizontal bars
-        x_min, x_max = self.bounds[0], self.bounds[2]
-        for i in range(self.grid_size[0]):
-            pygame.draw.line(self.surf, border_colour, (x_min, self.bounds[1] + i * self.cell_size),
-                             (x_max, self.bounds[1] + i * self.cell_size),
+        if self.maze_grid:
+            # the grid is drawn when the cells are rendered
+            pass
+        else:
+            # draw large square to define extents of grid
+            pygame.draw.rect(self.surf, border_colour, (self.bounds[0], self.bounds[1],
+                                                        self.bounds[2] - self.bounds[0] + 1,
+                                                        self.bounds[3] - self.bounds[1] + 1),
                              self.BORDER_SIZE)
-        # Draw vertical bars
-        y_min, y_max = self.bounds[1], self.bounds[3]
-        for i in range(self.grid_size[1]):
-            pygame.draw.line(self.surf, border_colour, (self.bounds[0] + i * self.cell_size, y_min),
-                             (self.bounds[0] + i * self.cell_size, y_max),
-                             self.BORDER_SIZE)
+            # Draw horizontal bars
+            x_min, x_max = self.bounds[0], self.bounds[2]
+            for i in range(self.grid_size[0]):
+                pygame.draw.line(self.surf, border_colour, (x_min, self.bounds[1] + i * self.cell_size),
+                                 (x_max, self.bounds[1] + i * self.cell_size),
+                                 self.BORDER_SIZE)
+            # Draw vertical bars
+            y_min, y_max = self.bounds[1], self.bounds[3]
+            for i in range(self.grid_size[1]):
+                pygame.draw.line(self.surf, border_colour, (self.bounds[0] + i * self.cell_size, y_min),
+                                 (self.bounds[0] + i * self.cell_size, y_max),
+                                 self.BORDER_SIZE)
 
     def render_cells(self):
         """
@@ -173,7 +193,7 @@ class GridMap:
             grid should be randomly turned to walls
         :return: Tuple of (start_cell, goal_cell)
         """
-        if random_walls_ratio > 0:
+        if random_walls_ratio > 0 and not self.maze_grid:
             for i in range(self.grid_size[0]):
                 for j in range(self.grid_size[1]):
                     if random() < random_walls_ratio:
