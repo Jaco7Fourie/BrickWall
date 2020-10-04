@@ -217,3 +217,24 @@ class GridMap:
                     updates.append(self.cell_grid[i][j].draw_cell())
 
         return updates
+
+    def post_maze_cleanup(self, start_coords: Tuple[int, int] = (1, 1),
+                          goal_coords: Tuple[int, int] = (-2, -2)) -> List[Any]:
+        """
+        Cleans up the generation graphics to prepare the maze for solving
+        :param start_coords:The row and column coordinates for the starting point
+        :param goal_coords:The row and column coordinates for the goal point. Negative indices counts
+            backwards from the end of the grid
+        :return: list of rectangles to indicate which parts of the background needs redrawing
+        """
+        updates = []
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                if (i, j) == start_coords:
+                    self.cell_grid[i][j].cell_type = 'start'
+                elif (i, j) == goal_coords:
+                    self.cell_grid[i][j].cell_type = 'goal'
+                else:
+                    self.cell_grid[i][j].cell_type = 'empty'
+                updates.append(self.cell_grid[i][j].draw_cell())
+        return updates

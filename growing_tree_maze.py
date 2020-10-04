@@ -1,7 +1,7 @@
 from typing import List, Any
 from grid_cell import WalledCell
-from random import sample
-from depq import DEPQ
+from random import sample, random
+from collections import deque
 
 
 class GrowingTreeMaze:
@@ -18,10 +18,14 @@ class GrowingTreeMaze:
         """
         self.cell_grid = cell_grid
         self.backtrack_prob = backtrack_prob
-        self.working_set = DEPQ(maxlen=len(cell_grid)*len(cell_grid[0]))
+        self.working_set = deque()
         # pick a random cell to initialise the generator
-        row = sample(cell_grid, 1)
-        self.working_set.addfirst(sample(row, 1))
+        row = sample(cell_grid, 1)[0]
+        last_insert = sample(row, 1)[0]
+        last_insert.cell_type = 'visited'
+        self.working_set.append(last_insert)
+
+        self.done = False
 
     def next_step(self, updates: List[Any]) -> str:
         """
@@ -30,3 +34,41 @@ class GrowingTreeMaze:
         next draw
         :return: a status message
         """
+        if len(self.working_set) == 0:
+            self.done = True
+            return f'Maze generation complete -- ({len(self.cell_grid)},{len(self.cell_grid[0])})'
+
+        if random() < self.backtrack_prob:
+            cell = self.working_set[-1]
+        else:
+            cell = sample(self.working_set, 1)[0]
+        neighbours = self.get_neighbours(cell)
+        if len(neighbours) == 0:
+            self.working_set.remove(cell)
+            msg = f'Cell removed -- {cell.coord[-1::-1]}'
+        else:
+            next_cell = sample(neighbours, 1)[0]
+            cell.tunnel_to(next_cell)
+            next_cell.cell_type = 'visited'
+            self.working_set.append(next_cell)
+            updates.append(cell.draw_cell())
+            updates.append(next_cell.draw_cell())
+            msg = f'Tunnelled to {next_cell.coord[-1::-1]}'
+        return msg
+
+    def get_neighbours(self, cell: WalledCell) -> List[WalledCell]:
+        """
+        Returns a list of unvisited neighbours of the cell provided.
+        In this case it's the 8 adjacent cells without the diagonal neighbours (4 neighbours).
+        :param cell: the WalledCell we want the neighbours for
+        :return: a list of neighbours
+        """
+        row_lim = (max(cell.coord[0] - 1, 0), min(cell.coord[0] + 2, len(self.cell_grid)))
+        col_lim = (max(cell.coord[1] - 1, 0), min(cell.coord[1] + 2, len(self.cell_grid[0])))
+        lst = []
+        for r in range(row_lim[0], row_lim[1]):
+            for c in range(col_lim[0], col_lim[1]):
+                if (r, c) != cell.coord and (r == cell.coord[0] or c == cell.coord[1]) \
+                        and self.cell_grid[r][c].cell_type != 'visited':
+                    lst.append(self.cell_grid[r][c])
+        return lst

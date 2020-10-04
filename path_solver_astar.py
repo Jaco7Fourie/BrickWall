@@ -1,8 +1,8 @@
 from math import sqrt
-from typing import List, Any
+from typing import List, Any, Tuple
 from depq import DEPQ
 
-from grid_cell import GridCell
+from grid_cell import GridCell, WalledCell, Walls
 
 
 def euclidean_heuristic(c_1: GridCell, c_2: GridCell) -> float:
@@ -39,7 +39,7 @@ class PathSolverAStar:
         :param start_cell: The starting cell
         :param goal_cell:  The goal cell
         :param heuristic:  The heuristic distance measure to use. One of {'euclidean', 'manhattan'}
-        :param movement: The way the agent is allowed to move. One of {'euclidean', 'manhattan'}
+        :param movement: The way the agent is allowed to move. One of {'euclidean', 'manhattan', 'walls'}
         :param heuristic_weight: The weight factor to multiply the heuristic by.
         Larger values make the algorithm more greedy. Values >1 will not guarantee the shortest path.
         """
@@ -64,6 +64,8 @@ class PathSolverAStar:
             self.neighbours = self.euclidean_neighbours
         elif movement == 'manhattan':
             self.neighbours = self.manhattan_neighbours
+        elif movement == 'walls':
+            self.neighbours = self.walls_neighbours
         else:
             print(f'Invalid choice for movement. Must be either euclidean or manhattan not {heuristic}')
             exit(0)
@@ -105,6 +107,45 @@ class PathSolverAStar:
                         and self.cell_grid[r][c].cell_type != 'wall':
                     lst.append(self.cell_grid[r][c])
         return lst
+
+    # noinspection PyTypeChecker
+    def walls_neighbours(self, cell: WalledCell) -> List[WalledCell]:
+        """
+        Returns a list of neighbours of the cell provided. Only neighbours that can be reached through open
+        walls are allowed
+        :param cell: the GridCell we want the neighbours for
+        :return: a list of neighbours
+        """
+        row_lim = (max(cell.coord[0]-1, 0), min(cell.coord[0]+2, len(self.cell_grid)))
+        col_lim = (max(cell.coord[1] - 1, 0), min(cell.coord[1] + 2, len(self.cell_grid[0])))
+        lst = []
+        for r in range(row_lim[0], row_lim[1]):
+            for c in range(col_lim[0], col_lim[1]):
+                if (r, c) != cell.coord and (r == cell.coord[0] or c == cell.coord[1]) \
+                        and PathSolverAStar.check_path(self.cell_grid[r][c], cell):
+                    lst.append(self.cell_grid[r][c])
+        return lst
+
+    @staticmethod
+    def check_path(cell_1: WalledCell, cell_2: WalledCell):
+        """
+        Checks the path between cells of these coordinates. Returns True if the wall between them is open
+        :param cell_1: first coordinate
+        :param cell_2: second coordinate
+        :return: True if the wall between cells is open
+        """
+        if cell_1.coord[0] < cell_2.coord[0]:
+            # tunnel to the SOUTH
+            return Walls.SOUTH not in cell_1.walls and Walls.NORTH not in cell_2.walls
+        elif cell_1.coord[0] > cell_2.coord[0]:
+            # tunnel to the NORTH
+            return Walls.NORTH not in cell_1.walls and Walls.SOUTH not in cell_2.walls
+        elif cell_1.coord[1] > cell_2.coord[1]:
+            # tunnel to the WEST
+            return Walls.WEST not in cell_1.walls and Walls.EAST not in cell_2.walls
+        else:
+            # tunnel to the EAST
+            return Walls.EAST not in cell_1.walls and Walls.WEST not in cell_2.walls
         
     def next_step(self, updates: List[Any]) -> str:
         """
@@ -164,3 +205,4 @@ class PathSolverAStar:
                     # self.nodes_table[neighbour.coord] = elem
                     updated += 1
         return msg + f' -- ({updated} updated: {inserted} inserted)'
+

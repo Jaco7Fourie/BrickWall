@@ -146,6 +146,7 @@ class WalledCell(GridCell):
         Draws the cell based on the cell type and return the bounds of the drawing
         :return: rectangle that defines the bounds of the drawing
         """
+        pygame.draw.rect(self.surf, GridCell.BACKGROUND_COLOUR, self.draw_bounds)
         if self.cell_type == 'path':
             rect = pygame.draw.rect(self.surf, GridCell.PATH_COLOUR, self.draw_bounds)
         elif self.cell_type == 'visited':
@@ -163,6 +164,8 @@ class WalledCell(GridCell):
             return pygame.Rect(0, 0, 0, 0)
 
         # draw the walls
+        # start with a background of no walls
+
         if Walls.NORTH in self.walls:
             pygame.draw.line(self.surf, self.WALL_COLOUR, self.bounding_rect[0:2], self.bounding_rect[-2:0:-1],
                              self.WALL_THICKNESS)

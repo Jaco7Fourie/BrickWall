@@ -1,12 +1,12 @@
-from typing import Tuple, List, Any
+from typing import List, Any
 
 import pygame
 import pygame_gui
-from screeninfo import get_monitors
+# from screeninfo import get_monitors
 
 from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
-
+from growing_tree_maze import GrowingTreeMaze
 
 class BrickWall:
     """
@@ -55,10 +55,6 @@ class BrickWall:
         self.heuristic_weight = 2
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
-        # text = '???'
-        # text = f'{text:<{self.T_SIZE}}'
-        # fw, fh = self.font.size(text)  # fw: font width,  fh: font height
-        # self.button_width = fw
 
         # check rows
         if self.BACKGROUND_SIZE[0] % rows != 0:
@@ -78,6 +74,9 @@ class BrickWall:
         # if true left-click draws walls and right_click erases them.
         # If false left-click moves start point and right click moves goal
         self.draw_mode_walls = True
+        self.walled_cells = True
+        self.maze_generator = None
+        self.cleanup_required = False
 
         # GUI elements
         self.toggle_draw_button = None
@@ -146,12 +145,12 @@ class BrickWall:
         pos = (pos[0] + 20, pos[1] + 30)
         size = (160, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
         self.heuristic_weight_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
-                                                              text='heuristic weight',
-                                                              manager=self.manager)
+                                                                  text='heuristic weight',
+                                                                  manager=self.manager)
         pos = (pos[0] - 20, pos[1] + 30)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.heuristic_weight_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
-                                                                         manager=self.manager)
+                                                                             manager=self.manager)
         self.heuristic_weight_text_box.set_text(str(self.heuristic_weight))
 
     def reset_run(self) -> List[Any]:
@@ -160,8 +159,9 @@ class BrickWall:
         :return: list of rectangles to indicate which parts of the background needs redrawing
         """
         updates = self.grid_map.reset_grid()
+        moves = 'walls' if self.walled_cells else 'manhattan'
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic=self.heuristic, movement='manhattan',
+                                      heuristic=self.heuristic, movement=moves,
                                       heuristic_weight=self.heuristic_weight)
         self.running = True
         self.paused = False
@@ -179,12 +179,14 @@ class BrickWall:
                                  self.TEXT_GUTTER + self.TEXT_BORDER,
                                  self.TEXT_BORDER + self.BACKGROUND_SIZE[1],
                                  self.TEXT_GUTTER + self.TEXT_BORDER + self.BACKGROUND_SIZE[0]],
-                                self.grid_size, maze_grid=False)
+                                self.grid_size, maze_grid=self.walled_cells)
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
+        self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.3)
+        moves = 'walls' if self.walled_cells else 'manhattan'
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
-                                      heuristic=self.heuristic, movement='manhattan',
+                                      heuristic=self.heuristic, movement=moves,
                                       heuristic_weight=self.heuristic_weight)
         self.screen.blit(self.background, (0, 0))
         self.running = True
@@ -204,7 +206,14 @@ class BrickWall:
 
             self.process_events(bounds, tick / 1000.0)
             # pygame.event.pump()
-            if not self.solver.done and not self.paused:
+            if self.walled_cells and not self.maze_generator.done and not self.paused:
+                msg = self.maze_generator.next_step(bounds)
+                self.cleanup_required = True
+            elif self.cleanup_required:
+                self.cleanup_required = False
+                bounds = self.grid_map.post_maze_cleanup(self.s_cell.coord, self.g_cell.coord)
+                self.paused = True
+            elif not self.solver.done and not self.paused:
                 msg = self.solver.next_step(bounds)
             if self.step:
                 self.paused = True
@@ -408,7 +417,7 @@ class BrickWall:
 
 if __name__ == '__main__':
     # get screen resolution
-    m = get_monitors()[0]
+    # m = get_monitors()[0]
     # call with width of window and fps
     BrickWall().run()
     # BrickWall(width=int(m.width - m.width * 0.1), height=int(m.height - m.height * 0.1)).run()
