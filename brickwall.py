@@ -8,6 +8,7 @@ from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
 from growing_tree_maze import GrowingTreeMaze
 
+
 class BrickWall:
     """
     Demo app to teach pygame and A*
@@ -73,13 +74,14 @@ class BrickWall:
         self.step = False
         # if true left-click draws walls and right_click erases them.
         # If false left-click moves start point and right click moves goal
-        self.draw_mode_walls = True
         self.walled_cells = True
+        self.draw_mode_walls = False
         self.maze_generator = None
         self.cleanup_required = False
 
         # GUI elements
         self.toggle_draw_button = None
+        self.toggle_cell_walls_button = None
         self.heuristic_menu = None
         self.reset_button = None
         self.reset_search_button = None
@@ -103,9 +105,15 @@ class BrickWall:
             self.TEXT_BORDER + self.BACKGROUND_SIZE[1] + 2, self.TEXT_BORDER, self.width - 1, self.height - 1)
         pos = gui_borders[0:2]
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        mode = 'walls' if self.draw_mode_walls else 'start/goal'
         self.toggle_draw_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
-                                                               text='Draw mode (walls)',
+                                                               text=f'Draw mode ({mode})',
                                                                manager=self.manager)
+        pos = (pos[0], pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.toggle_cell_walls_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                                     text=f'Cell walls ({self.walled_cells})',
+                                                                     manager=self.manager)
         pos = (pos[0], pos[1] + 20)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.heuristic_menu = pygame_gui.elements.UIDropDownMenu(['euclidean', 'manhattan'],
@@ -158,13 +166,16 @@ class BrickWall:
         Starts a new run using the same grid
         :return: list of rectangles to indicate which parts of the background needs redrawing
         """
+        if self.walled_cells and not self.maze_generator.done:
+            # disable when generating maze
+            return []
         updates = self.grid_map.reset_grid()
         moves = 'walls' if self.walled_cells else 'manhattan'
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
                                       heuristic=self.heuristic, movement=moves,
                                       heuristic_weight=self.heuristic_weight)
         self.running = True
-        self.paused = False
+        self.paused = True
         self.step = False
         return updates
 
@@ -183,7 +194,9 @@ class BrickWall:
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.3)
+        self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.6)
+        if self.walled_cells:
+            self.draw_mode_walls = False
         moves = 'walls' if self.walled_cells else 'manhattan'
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
                                       heuristic=self.heuristic, movement=moves,
@@ -209,10 +222,13 @@ class BrickWall:
             if self.walled_cells and not self.maze_generator.done and not self.paused:
                 msg = self.maze_generator.next_step(bounds)
                 self.cleanup_required = True
+                self.heuristic_menu.disable()
+                self.toggle_draw_button.disable()
             elif self.cleanup_required:
                 self.cleanup_required = False
                 bounds = self.grid_map.post_maze_cleanup(self.s_cell.coord, self.g_cell.coord)
                 self.paused = True
+                self.heuristic_menu.enable()
             elif not self.solver.done and not self.paused:
                 msg = self.solver.next_step(bounds)
             if self.step:
@@ -233,8 +249,11 @@ class BrickWall:
             bounds.append(self.draw_text(f"Cell: {(mouse_x, mouse_y)} " + ui_msg, 4, self.TEXT_COLOUR))
             bounds.append(self.draw_text(f"FPS: {self.clock.get_fps():>5.2f}", 3, self.TEXT_COLOUR))
             bounds.append(self.draw_text(msg, 1, self.TEXT_COLOUR))
-            bounds.append(self.draw_text(f'visited: {self.solver.visited} candidates: {self.solver.openSet.size()}',
-                                         2, self.TEXT_COLOUR))
+            if self.walled_cells and not self.maze_generator.done:
+                bounds.append(self.draw_text(f'visited: {self.maze_generator.visited} ', 2, self.TEXT_COLOUR))
+            else:
+                bounds.append(self.draw_text(f'visited: {self.solver.visited} candidates: {self.solver.openSet.size()}',
+                                             2, self.TEXT_COLOUR))
 
             # pygame.display.update(bounds)
             # add ui area to bounds
@@ -269,7 +288,10 @@ class BrickWall:
                     self.step = True
                     self.paused = False
                 elif event.key == pygame.K_d:
-                    self.draw_mode_walls = not self.draw_mode_walls
+                    if self.walled_cells:
+                        self.draw_mode_walls = False
+                    else:
+                        self.draw_mode_walls = not self.draw_mode_walls
                 elif event.key == pygame.K_t:
                     # reset the scores for the goal cell
                     self.g_cell.f_score = float('inf')
@@ -279,10 +301,18 @@ class BrickWall:
             elif event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.toggle_draw_button:
-                        self.draw_mode_walls = not self.draw_mode_walls
+                        if self.walled_cells:
+                            self.draw_mode_walls = False
+                        else:
+                            self.draw_mode_walls = not self.draw_mode_walls
                         mode = 'walls' if self.draw_mode_walls else 'start/goal'
                         text = f'Draw mode ({mode})'
                         self.toggle_draw_button.set_text(text)
+                    elif event.ui_element == self.toggle_cell_walls_button:
+                        self.walled_cells = not self.walled_cells
+                        text = f'Walled cells ({self.walled_cells})'
+                        self.toggle_cell_walls_button.set_text(text)
+                        self.start_new_run()
                     elif event.ui_element == self.reset_button:
                         self.start_new_run()
                     elif event.ui_element == self.reset_search_button:

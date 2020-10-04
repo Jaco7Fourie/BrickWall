@@ -26,6 +26,7 @@ class GrowingTreeMaze:
         self.working_set.append(last_insert)
 
         self.done = False
+        self.visited = 0
 
     def next_step(self, updates: List[Any]) -> str:
         """
@@ -50,6 +51,7 @@ class GrowingTreeMaze:
             next_cell = sample(neighbours, 1)[0]
             cell.tunnel_to(next_cell)
             next_cell.cell_type = 'visited'
+            self.visited += 1
             self.working_set.append(next_cell)
             updates.append(cell.draw_cell())
             updates.append(next_cell.draw_cell())
