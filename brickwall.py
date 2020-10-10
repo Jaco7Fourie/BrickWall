@@ -1,5 +1,6 @@
 from typing import List, Any
-
+import pickle as pkl
+import pathlib
 import pygame
 import pygame_gui
 # from screeninfo import get_monitors
@@ -54,6 +55,7 @@ class BrickWall:
         self.manager = pygame_gui.UIManager((self.width, self.height))
         self.fps = fps
         self.heuristic_weight = 2
+        self.twistiness = 0.6
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
 
@@ -64,6 +66,7 @@ class BrickWall:
         self.grid_size = [rows, rows * 2]
         self.random_walls = random_walls
 
+        self.cur_path = pathlib.Path().absolute()
         self.solver = None
         self.heuristic = 'euclidean'
         self.grid_map = None
@@ -72,6 +75,7 @@ class BrickWall:
         self.running = True
         self.paused = False
         self.step = False
+        self.in_dialog = False
         # if true left-click draws walls and right_click erases them.
         # If false left-click moves start point and right click moves goal
         self.walled_cells = True
@@ -80,7 +84,11 @@ class BrickWall:
         self.cleanup_required = False
 
         # GUI elements
+        self.save_dialog = None
+        self.load_dialog = None
         self.toggle_draw_button = None
+        self.save_button = None
+        self.load_button = None
         self.toggle_cell_walls_button = None
         self.heuristic_menu = None
         self.reset_button = None
@@ -91,6 +99,8 @@ class BrickWall:
         self.random_walls_text_box = None
         self.heuristic_weight_label = None
         self.heuristic_weight_text_box = None
+        self.twistiness_label = None
+        self.twistiness_text_box = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -160,6 +170,26 @@ class BrickWall:
         self.heuristic_weight_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
                                                                              manager=self.manager)
         self.heuristic_weight_text_box.set_text(str(self.heuristic_weight))
+        pos = (pos[0] + 20, pos[1] + 30)
+        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        self.twistiness_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                                            text='Twistiness',
+                                                            manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 30)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.twistiness_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                       manager=self.manager)
+        self.twistiness_text_box.set_text(str(self.twistiness))
+        pos = (pos[0], pos[1] + 40)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.save_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                        text='save maze',
+                                                        manager=self.manager)
+        pos = (pos[0], pos[1] + 20)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.load_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                        text='load maze',
+                                                        manager=self.manager)
 
     def reset_run(self) -> List[Any]:
         """
@@ -297,8 +327,9 @@ class BrickWall:
                     self.g_cell.f_score = float('inf')
                     self.g_cell.g_score = float('inf')
                     bounds.extend(self.reset_run())
-
+            # USER EVENTS
             elif event.type == pygame.USEREVENT:
+                # BUTTON PRESSES
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.toggle_draw_button:
                         if self.walled_cells:
@@ -320,6 +351,23 @@ class BrickWall:
                         self.g_cell.f_score = float('inf')
                         self.g_cell.g_score = float('inf')
                         bounds.extend(self.reset_run())
+                    elif event.ui_element == self.save_button:
+                        rect = pygame.Rect((100, 100), (700, 600))
+                        self.save_dialog = pygame_gui.windows.ui_file_dialog.UIFileDialog(
+                            rect,
+                            self.manager,
+                            window_title='choose save file',
+                            initial_file_path=self.cur_path)
+                        self.in_dialog = True
+                    elif event.ui_element == self.load_button:
+                        rect = pygame.Rect((100, 100), (700, 600))
+                        self.load_dialog = pygame_gui.windows.ui_file_dialog.UIFileDialog(
+                            rect,
+                            self.manager,
+                            window_title='choose maze file',
+                            initial_file_path=self.cur_path)
+                        self.in_dialog = True
+                # DROP DOWN MENU
                 elif event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
                     if event.ui_element == self.heuristic_menu:
                         self.heuristic = self.heuristic_menu.selected_option
@@ -327,6 +375,7 @@ class BrickWall:
                         self.g_cell.f_score = float('inf')
                         self.g_cell.g_score = float('inf')
                         bounds.extend(self.reset_run())
+                # TEXT BOXES
                 elif event.user_type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
                     if event.ui_element == self.grid_rows_label_text_box:
                         try:
@@ -350,8 +399,29 @@ class BrickWall:
                         self.g_cell.f_score = float('inf')
                         self.g_cell.g_score = float('inf')
                         bounds.extend(self.reset_run())
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+                    elif event.ui_element == self.twistiness_text_box:
+                        try:
+                            self.twistiness = float(self.twistiness_text_box.get_text())
+                        except ValueError:
+                            print(f'Cannot parse value {self.twistiness_text_box.get_text()}')
+                        self.start_new_run()
+                # FILE DIALOGS
+                elif event.user_type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
+                    if event.ui_element == self.save_dialog:
+                        self.save_maze(event.text)
+                        self.in_dialog = False
+                    elif event.ui_element == self.load_dialog:
+                        self.load_maze(event.text)
+                        self.in_dialog = False
+                elif event.user_type == pygame_gui.UI_WINDOW_CLOSE:
+                    if event.ui_element == self.save_dialog:
+                        self.screen.blit(self.background, (0, 0))
+                        self.in_dialog = False
+                    elif event.ui_element == self.load_dialog:
+                        self.screen.blit(self.background, (0, 0))
+                        self.in_dialog = False
+            # MOUSE EVENTS
+            elif event.type == pygame.MOUSEBUTTONDOWN and not self.in_dialog:
                 if event.button == pygame.BUTTON_LEFT and not self.draw_mode_walls:
                     mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
                     if mouse_x == -1 or mouse_y == -1:
@@ -387,8 +457,8 @@ class BrickWall:
                     bounds.extend(self.reset_run())
 
             self.manager.process_events(event)
-
-        if self.draw_mode_walls:
+        # MOUSE INTERACTIONS
+        if self.draw_mode_walls and not self.in_dialog:
             (button1, button2, button3) = pygame.mouse.get_pressed()
             if button1:
                 mouse_x, mouse_y = self.grid_map.cell_coords_from_mouse_coords(pygame.mouse.get_pos())
@@ -405,6 +475,65 @@ class BrickWall:
                     self.grid_map.cell_grid[mouse_y][mouse_x].cell_type = 'empty'
                     bounds.append(self.grid_map.cell_grid[mouse_y][mouse_x].draw_cell())
         self.manager.update(time_delta)
+
+    def save_maze(self, path: str):
+        """
+        saves the maze to file
+        :param path: the path to the save file
+        :return:
+        """
+        # temporarily remove surface to make object safe to pickle
+        surf = self.background
+        self.grid_map.surf = None
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                self.grid_map.cell_grid[i][j].surf = None
+        to_save = {'grid_map': self.grid_map,
+                   'g_cell': self.g_cell,
+                   's_cell': self.s_cell,
+                   'solver': self.solver,
+                   'maze_generator': self.maze_generator}
+        outfile = open(path, 'wb')
+        pkl.dump(to_save, outfile)
+        outfile.close()
+        print("maze saved to:", path)
+        self.cur_path = path
+        self.screen.blit(self.background, (0, 0))
+
+        # now restore the surface
+        self.grid_map.surf = surf
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                self.grid_map.cell_grid[i][j].surf = surf
+
+    def load_maze(self, path: str):
+        """
+        loads a maze from file
+        :param path: the path to the save file
+        :return:
+        """
+        surf = self.background
+        fromfile = open(path, 'rb')
+        new_obj = pkl.load(fromfile)
+        fromfile.close()
+        self.grid_map = new_obj['grid_map']
+        self.g_cell = new_obj['g_cell']
+        self.s_cell = new_obj['s_cell']
+        self.solver = new_obj['solver']
+        self.maze_generator = new_obj['maze_generator']
+        self.grid_map.surf = surf
+
+        self.grid_size = self.grid_map.grid_size
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                self.grid_map.cell_grid[i][j].surf = surf
+
+        print("maze loaded from:", path)
+        self.grid_rows_label_text_box.set_text(str(self.grid_size[0]))
+        self.cur_path = path
+        self.grid_map.render_cells()
+        self.screen.blit(self.background, (0, 0))
+        self.paused = True
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
