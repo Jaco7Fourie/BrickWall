@@ -1,3 +1,4 @@
+import sys
 from typing import List, Any
 import pickle as pkl
 import pathlib
@@ -8,6 +9,7 @@ import pygame_gui
 from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
 from growing_tree_maze import GrowingTreeMaze
+from svg_render import render_to_svg
 
 
 class BrickWall:
@@ -42,7 +44,7 @@ class BrickWall:
         :param rows: The number of rows in the grid (columns get calculated based on this)
         :param random_walls: probability of a cell randomly becoming a wall to generate random rooms
         """
-
+        sys.setrecursionlimit(5000)
         pygame.init()
         pygame.display.set_caption("BrickWall -- Press ESC to quit")
         self.width = width
@@ -534,6 +536,9 @@ class BrickWall:
         self.grid_map.render_cells()
         self.screen.blit(self.background, (0, 0))
         self.paused = True
+
+
+        render_to_svg('/home/fouriej/source/BrickWall/mazes/render_1.svg', self.grid_map.cell_grid, True)
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
