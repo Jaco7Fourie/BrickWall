@@ -26,21 +26,26 @@ def render_cell(drawing: SDraw.Drawing, cell: GridCell, x_pos: int, y_pos: int):
     :param y_pos: the svg y coordinate to the top-left of this cell
     :return: None
     """
+    def_width = 10
+    def_off = 0
     if isinstance(cell, WalledCell):
         if cell.cell_type == 'path':
-            r = SDraw.Rectangle(x_pos, y_pos, 10, 10, fill=colorstr(GridCell.PATH_COLOUR))
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.PATH_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'visited':
-            r = SDraw.Rectangle(x_pos + 2, y_pos + 2, 6, 6, fill=colorstr(GridCell.VISITED_COLOUR))
+            r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.VISITED_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'open_set':
-            r = SDraw.Rectangle(x_pos + 2, y_pos + 2, 6, 6, fill=colorstr(GridCell.OPEN_SET_COLOUR))
+            r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.OPEN_SET_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'start':
-            r = SDraw.Rectangle(x_pos, y_pos, 10, 10, fill=colorstr(GridCell.START_COLOUR))
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.START_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'goal':
-            r = SDraw.Rectangle(x_pos, y_pos, 10, 10, fill=colorstr(GridCell.GOAL_COLOUR))
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.GOAL_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'empty':
             pass
@@ -50,20 +55,20 @@ def render_cell(drawing: SDraw.Drawing, cell: GridCell, x_pos: int, y_pos: int):
 
         # draw the walls
         if Walls.NORTH in cell.walls:
-            r = SDraw.Line(x_pos, y_pos, x_pos + 10, y_pos,
-                           stroke='black', stroke_width=2, fill='none')
+            r = SDraw.Line(x_pos, y_pos + 10, x_pos + 10, y_pos + 10,
+                           stroke='black', stroke_width=1, fill='none', stroke_linecap="square")
             drawing.append(r)
         if Walls.SOUTH in cell.walls:
-            r = SDraw.Line(x_pos, y_pos + 10, x_pos + 10, y_pos + 10,
-                           stroke='black', stroke_width=2, fill='none')
+            r = SDraw.Line(x_pos, y_pos, x_pos + 10, y_pos,
+                           stroke='black', stroke_width=1, fill='none', stroke_linecap="square")
             drawing.append(r)
         if Walls.WEST in cell.walls:
             r = SDraw.Line(x_pos, y_pos, x_pos, y_pos + 10,
-                           stroke='black', stroke_width=2, fill='none')
+                           stroke='black', stroke_width=1, fill='none', stroke_linecap="square")
             drawing.append(r)
         if Walls.EAST in cell.walls:
             r = SDraw.Line(x_pos + 10, y_pos, x_pos + 10, y_pos + 10,
-                           stroke='black', stroke_width=2, fill='none')
+                           stroke='black', stroke_width=1, fill='none', stroke_linecap="square")
             drawing.append(r)
     else:
         print('export to svg implemented for WalledCells only')
@@ -81,12 +86,13 @@ def render_to_svg(path: str, cell_grid: List[List[GridCell]], save_png: bool):
     cols = len(cell_grid[0])
     drawing = SDraw.Drawing(cols * 10, rows * 10, origin=(0, 0), displayInline=False)
     # draw the border
-    r = SDraw.Rectangle(0, 0, cols * 10, rows * 10, stroke_width=2, fill='none', stroke='black')
+    r = SDraw.Rectangle(0, 0, cols * 10, rows * 10, stroke_width=1, fill='none', stroke='black')
     drawing.append(r)
+
     for i in range(rows):
         for j in range(cols):
             x_pos = j * 10
-            y_pos = rows * 10 - i * 10
+            y_pos = (rows-1) * 10 - i * 10
             r = render_cell(drawing, cell_grid[i][j], x_pos, y_pos)
             drawing.append(r)
 

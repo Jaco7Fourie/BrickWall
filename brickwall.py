@@ -88,6 +88,7 @@ class BrickWall:
         # GUI elements
         self.save_dialog = None
         self.load_dialog = None
+        self.export_dialog = None
         self.toggle_draw_button = None
         self.save_button = None
         self.load_button = None
@@ -103,6 +104,7 @@ class BrickWall:
         self.heuristic_weight_text_box = None
         self.twistiness_label = None
         self.twistiness_text_box = None
+        self.export_to_svg_button = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -192,6 +194,11 @@ class BrickWall:
         self.load_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
                                                         text='load maze',
                                                         manager=self.manager)
+        pos = (pos[0], pos[1] + 40)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.export_to_svg_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
+                                                                 text='export to svg',
+                                                                 manager=self.manager)
 
     def reset_run(self) -> List[Any]:
         """
@@ -369,6 +376,14 @@ class BrickWall:
                             window_title='choose maze file',
                             initial_file_path=self.cur_path)
                         self.in_dialog = True
+                    elif event.ui_element == self.export_to_svg_button:
+                        rect = pygame.Rect((100, 100), (700, 600))
+                        self.export_dialog = pygame_gui.windows.ui_file_dialog.UIFileDialog(
+                            rect,
+                            self.manager,
+                            window_title='choose svg file',
+                            initial_file_path=self.cur_path)
+                        self.in_dialog = True
                 # DROP DOWN MENU
                 elif event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
                     if event.ui_element == self.heuristic_menu:
@@ -415,11 +430,17 @@ class BrickWall:
                     elif event.ui_element == self.load_dialog:
                         self.load_maze(event.text)
                         self.in_dialog = False
+                    elif event.ui_element == self.export_dialog:
+                        render_to_svg(event.text, self.grid_map.cell_grid, True)
+                        self.in_dialog = False
                 elif event.user_type == pygame_gui.UI_WINDOW_CLOSE:
                     if event.ui_element == self.save_dialog:
                         self.screen.blit(self.background, (0, 0))
                         self.in_dialog = False
                     elif event.ui_element == self.load_dialog:
+                        self.screen.blit(self.background, (0, 0))
+                        self.in_dialog = False
+                    elif event.ui_element == self.export_dialog:
                         self.screen.blit(self.background, (0, 0))
                         self.in_dialog = False
             # MOUSE EVENTS
@@ -536,9 +557,6 @@ class BrickWall:
         self.grid_map.render_cells()
         self.screen.blit(self.background, (0, 0))
         self.paused = True
-
-
-        render_to_svg('/home/fouriej/source/BrickWall/mazes/render_1.svg', self.grid_map.cell_grid, True)
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
