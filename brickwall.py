@@ -9,7 +9,7 @@ import pygame_gui
 from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
 from growing_tree_maze import GrowingTreeMaze
-from svg_render import render_to_svg
+from svg_render import render_to_svg, RENDER_SOLUTION, RENDER_VISITED
 
 
 class BrickWall:
@@ -105,6 +105,8 @@ class BrickWall:
         self.twistiness_label = None
         self.twistiness_text_box = None
         self.export_to_svg_button = None
+        self.render_solution_text_box = None
+        self.render_visited_text_box = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -184,7 +186,7 @@ class BrickWall:
         self.twistiness_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
                                                                        manager=self.manager)
         self.twistiness_text_box.set_text(str(self.twistiness))
-        pos = (pos[0], pos[1] + 40)
+        pos = (pos[0], pos[1] + 50)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
         self.save_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
                                                         text='save maze',
@@ -199,6 +201,26 @@ class BrickWall:
         self.export_to_svg_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos, size),
                                                                  text='export to svg',
                                                                  manager=self.manager)
+        pos = (pos[0] + 20, pos[1] + 20)
+        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                    text='Render visits',
+                                    manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 30)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.render_visited_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                           manager=self.manager)
+        self.render_visited_text_box.set_text(str(RENDER_VISITED))
+        pos = (pos[0] + 20, pos[1] + 30)
+        size = (150, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                    text='Render path',
+                                    manager=self.manager)
+        pos = (pos[0] - 20, pos[1] + 30)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.render_solution_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                            manager=self.manager)
+        self.render_solution_text_box.set_text(str(RENDER_SOLUTION))
 
     def reset_run(self) -> List[Any]:
         """
@@ -557,6 +579,10 @@ class BrickWall:
         self.grid_map.render_cells()
         self.screen.blit(self.background, (0, 0))
         self.paused = True
+        if self.grid_map.maze_grid:
+            self.walled_cells = True
+        else:
+            self.walled_cells = False
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """

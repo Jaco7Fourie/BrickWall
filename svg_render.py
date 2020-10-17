@@ -13,6 +13,9 @@ OPEN_SET_COLOUR = (131, 212, 131)  # Mantis
 START_COLOUR = (3, 119, 88)  # Tropical rain forest
 GOAL_COLOUR = (169, 15, 51)  # Cromson UA
 
+RENDER_SOLUTION = True
+RENDER_VISITED = False
+
 
 def colorstr(rgb): return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
 
@@ -33,25 +36,22 @@ def render_cell(drawing: SDraw.Drawing, cell: GridCell, x_pos: int, y_pos: int):
             r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
                                 fill=colorstr(GridCell.PATH_COLOUR))
             drawing.append(r)
-        elif cell.cell_type == 'visited':
+        elif cell.cell_type == 'visited' and RENDER_VISITED:
             r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.VISITED_COLOUR))
             drawing.append(r)
-        elif cell.cell_type == 'open_set':
+        elif cell.cell_type == 'open_set' and RENDER_VISITED:
             r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.OPEN_SET_COLOUR))
             drawing.append(r)
-        elif cell.cell_type == 'start':
+        elif cell.cell_type == 'start' and RENDER_SOLUTION:
             r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
                                 fill=colorstr(GridCell.START_COLOUR))
             drawing.append(r)
-        elif cell.cell_type == 'goal':
+        elif cell.cell_type == 'goal' and RENDER_SOLUTION:
             r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
                                 fill=colorstr(GridCell.GOAL_COLOUR))
             drawing.append(r)
         elif cell.cell_type == 'empty':
             pass
-        else:
-            print(f'Invalid Cell type: {cell.cell_type}')
-            return NoElement
 
         # draw the walls
         if Walls.NORTH in cell.walls:
@@ -71,7 +71,35 @@ def render_cell(drawing: SDraw.Drawing, cell: GridCell, x_pos: int, y_pos: int):
                            stroke='black', stroke_width=1, fill='none', stroke_linecap="square")
             drawing.append(r)
     else:
-        print('export to svg implemented for WalledCells only')
+        if cell.cell_type == 'path':
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.PATH_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'visited' and RENDER_VISITED:
+            r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.VISITED_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'open_set' and RENDER_VISITED:
+            r = SDraw.Rectangle(x_pos + 3, y_pos + 2, 5, 5, fill=colorstr(GridCell.OPEN_SET_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'start' and RENDER_SOLUTION:
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.START_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'goal' and RENDER_SOLUTION:
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                                fill=colorstr(GridCell.GOAL_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'wall':
+            r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width, stroke_width=0.5,
+                                fill=colorstr(GridCell.WALL_COLOUR))
+            drawing.append(r)
+        elif cell.cell_type == 'empty':
+            pass
+        # draw the main box
+        r = SDraw.Rectangle(x_pos + def_off, y_pos + def_off, def_width, def_width,
+                            stroke='black', stroke_width=1, fill='none')
+        drawing.append(r)
+
 
 
 def render_to_svg(path: str, cell_grid: List[List[GridCell]], save_png: bool):
@@ -93,8 +121,7 @@ def render_to_svg(path: str, cell_grid: List[List[GridCell]], save_png: bool):
         for j in range(cols):
             x_pos = j * 10
             y_pos = (rows-1) * 10 - i * 10
-            r = render_cell(drawing, cell_grid[i][j], x_pos, y_pos)
-            drawing.append(r)
+            render_cell(drawing, cell_grid[i][j], x_pos, y_pos)
 
     drawing.setPixelScale(2)  # Set number of pixels per geometry unit
     drawing.saveSvg(path)
