@@ -2,7 +2,6 @@ from typing import Tuple
 import pygame
 from enum import Flag, auto
 
-
 class GridCell:
     # https://coolors.co/a90f33-f78c6b-ffd166-83d483-037758-118ab2-073b4c
     BACKGROUND_COLOUR = (246, 240, 237)  # Isabelline
