@@ -28,34 +28,38 @@ class GrowingTreeMaze:
         self.done = False
         self.visited = 0
 
-    def next_step(self, updates: List[Any]) -> str:
+    def next_step(self, updates: List[Any], render_steps: int) -> str:
         """
         performs the next step in the algorithm and updates the cells accordingly
         :param updates: a list of rectangles that represent limits of the background that need to be updated at the
         next draw
+        :param render_steps: the number of steps to process before returning. This is used to speed up the the animation
+        by not rendering every generation step
         :return: a status message
         """
-        if len(self.working_set) == 0:
-            self.done = True
-            return f'Maze generation complete -- ({len(self.cell_grid)},{len(self.cell_grid[0])})'
+        msg = ''
+        for i in range(render_steps):
+            if len(self.working_set) == 0:
+                self.done = True
+                return f'Maze generation complete -- ({len(self.cell_grid)},{len(self.cell_grid[0])})'
 
-        if random() < self.backtrack_prob:
-            cell = self.working_set[-1]
-        else:
-            cell = sample(self.working_set, 1)[0]
-        neighbours = self.get_neighbours(cell)
-        if len(neighbours) == 0:
-            self.working_set.remove(cell)
-            msg = f'Cell removed -- {cell.coord[-1::-1]}'
-        else:
-            next_cell = sample(neighbours, 1)[0]
-            cell.tunnel_to(next_cell)
-            next_cell.cell_type = 'visited'
-            self.visited += 1
-            self.working_set.append(next_cell)
-            updates.append(cell.draw_cell())
-            updates.append(next_cell.draw_cell())
-            msg = f'Tunnelled to {next_cell.coord[-1::-1]}'
+            if random() < self.backtrack_prob:
+                cell = self.working_set[-1]
+            else:
+                cell = sample(self.working_set, 1)[0]
+            neighbours = self.get_neighbours(cell)
+            if len(neighbours) == 0:
+                self.working_set.remove(cell)
+                msg = f'Cell removed -- {cell.coord[-1::-1]}'
+            else:
+                next_cell = sample(neighbours, 1)[0]
+                cell.tunnel_to(next_cell)
+                next_cell.cell_type = 'visited'
+                self.visited += 1
+                self.working_set.append(next_cell)
+                updates.append(cell.draw_cell())
+                updates.append(next_cell.draw_cell())
+                msg = f'Tunnelled to {next_cell.coord[-1::-1]}'
         return msg
 
     def get_neighbours(self, cell: WalledCell) -> List[WalledCell]:

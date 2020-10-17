@@ -147,62 +147,65 @@ class PathSolverAStar:
             # tunnel to the EAST
             return Walls.EAST not in cell_1.walls and Walls.WEST not in cell_2.walls
         
-    def next_step(self, updates: List[Any]) -> str:
+    def next_step(self, updates: List[Any], render_steps: int) -> str:
         """
         performs the next step in the algorithm and updates the cells accordingly
         :param updates: a list of rectangles that represent limits of the background that need to be updated at the
         next draw
+        :param render_steps: the number of steps to process before returning. This is used to speed up the the animation
+        by not rendering every generation step
         :return: a status message
         """
         updated = 0
         inserted = 0
-        # updates = []
-        if self.done or self.openSet.is_empty():
-            self.done = True
-            return 'No path found'
-        # remove the smallest f_score
-        current = self.openSet.poplast()[0]
-        # we want the reverse printed
-        msg = f'current = {current.coord[-1::-1]}'
-        if current.coord == self.goal_cell.coord:
-            current.cell_type = 'goal'
-            updates.append(current.draw_cell())
-            msg = f'goal reached at {self.goal_cell.coord}. Total distance: {current.f_score}'
-            # trace the path
-            while current.comes_from is not None:
-                current = current.comes_from
-                if current.cell_type != 'start':
-                    current.cell_type = 'path'
+        msg = ''
+        for i in range(render_steps):
+            if self.done or self.openSet.is_empty():
+                self.done = True
+                return 'No path found'
+            # remove the smallest f_score
+            current = self.openSet.poplast()[0]
+            # we want the reverse printed
+            msg = f'current = {current.coord[-1::-1]}'
+            if current.coord == self.goal_cell.coord:
+                current.cell_type = 'goal'
                 updates.append(current.draw_cell())
-            self.done = True
-            return msg
+                msg = f'goal reached at {self.goal_cell.coord}. Total distance: {current.f_score}'
+                # trace the path
+                while current.comes_from is not None:
+                    current = current.comes_from
+                    if current.cell_type != 'start':
+                        current.cell_type = 'path'
+                    updates.append(current.draw_cell())
+                self.done = True
+                return msg
 
-        if current.cell_type != 'start':
-            current.cell_type = 'visited'
-            updates.append(current.draw_cell())
-            self.visited += 1
-        for neighbour in self.neighbours(current):
-            t_score = current.g_score + neighbour.cost
-            updated = 0
-            inserted = 0
-            if t_score < neighbour.g_score:
-                # this is a better path to the neighbour so update the g_score
-                neighbour.comes_from = current
-                neighbour.g_score = t_score
-                neighbour.f_score = t_score + self.heuristic(neighbour, self.goal_cell) * self.heuristic_weight
-                # only add the neighbour to the open set if it is not already in the open set
-                if neighbour not in self.openSet:
-                    self.openSet.insert(neighbour, neighbour.f_score)
-                    # self.nodes_table[neighbour.coord] = elem
-                    neighbour.cell_type = 'open_set'
-                    updates.append(neighbour.draw_cell())
-                    inserted += 1
-                else:
-                    # elem = Node(neighbour)
-                    self.openSet.remove(neighbour)
-                    self.openSet.insert(neighbour, neighbour.f_score)
-                    # self.openSet.decrease_key(self.nodes_table[neighbour.coord], neighbour)
-                    # self.nodes_table[neighbour.coord] = elem
-                    updated += 1
+            if current.cell_type != 'start':
+                current.cell_type = 'visited'
+                updates.append(current.draw_cell())
+                self.visited += 1
+            for neighbour in self.neighbours(current):
+                t_score = current.g_score + neighbour.cost
+                updated = 0
+                inserted = 0
+                if t_score < neighbour.g_score:
+                    # this is a better path to the neighbour so update the g_score
+                    neighbour.comes_from = current
+                    neighbour.g_score = t_score
+                    neighbour.f_score = t_score + self.heuristic(neighbour, self.goal_cell) * self.heuristic_weight
+                    # only add the neighbour to the open set if it is not already in the open set
+                    if neighbour not in self.openSet:
+                        self.openSet.insert(neighbour, neighbour.f_score)
+                        # self.nodes_table[neighbour.coord] = elem
+                        neighbour.cell_type = 'open_set'
+                        updates.append(neighbour.draw_cell())
+                        inserted += 1
+                    else:
+                        # elem = Node(neighbour)
+                        self.openSet.remove(neighbour)
+                        self.openSet.insert(neighbour, neighbour.f_score)
+                        # self.openSet.decrease_key(self.nodes_table[neighbour.coord], neighbour)
+                        # self.nodes_table[neighbour.coord] = elem
+                        updated += 1
         return msg + f' -- ({updated} updated: {inserted} inserted)'
 

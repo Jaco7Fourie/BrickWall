@@ -58,6 +58,7 @@ class BrickWall:
         self.fps = fps
         self.heuristic_weight = 2
         self.twistiness = 0.6
+        self.render_skip = 1
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
 
@@ -107,6 +108,7 @@ class BrickWall:
         self.export_to_svg_button = None
         self.render_solution_text_box = None
         self.render_visited_text_box = None
+        self.render_skip_text_box = None
         self.add_gui()
         # events
         pygame.event.set_allowed(None)
@@ -222,6 +224,17 @@ class BrickWall:
                                                                             manager=self.manager)
         self.render_solution_text_box.set_text(str(RENDER_SOLUTION))
 
+        pos = (pos[0], pos[1] + 50)
+        size = (195, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
+        pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
+                                    text='Render every n frames',
+                                    manager=self.manager)
+        pos = (pos[0], pos[1] + 30)
+        size = (195, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.render_skip_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
+                                                                        manager=self.manager)
+        self.render_skip_text_box.set_text(str(self.render_skip))
+
     def reset_run(self) -> List[Any]:
         """
         Starts a new run using the same grid
@@ -281,7 +294,7 @@ class BrickWall:
             self.process_events(bounds, tick / 1000.0)
             # pygame.event.pump()
             if self.walled_cells and not self.maze_generator.done and not self.paused:
-                msg = self.maze_generator.next_step(bounds)
+                msg = self.maze_generator.next_step(bounds, self.render_skip)
                 self.cleanup_required = True
                 self.heuristic_menu.disable()
                 self.toggle_draw_button.disable()
@@ -291,7 +304,7 @@ class BrickWall:
                 self.paused = True
                 self.heuristic_menu.enable()
             elif not self.solver.done and not self.paused:
-                msg = self.solver.next_step(bounds)
+                msg = self.solver.next_step(bounds, self.render_skip)
             if self.step:
                 self.paused = True
                 self.step = False
@@ -323,9 +336,9 @@ class BrickWall:
             bounds.append(gui_borders)
             for r in bounds:
                 self.screen.blit(self.background, r, r)
+            bounds = []
             self.manager.draw_ui(self.screen)
             pygame.display.flip()
-            bounds = []
 
         pygame.quit()
 
@@ -444,6 +457,14 @@ class BrickWall:
                         except ValueError:
                             print(f'Cannot parse value {self.twistiness_text_box.get_text()}')
                         self.start_new_run()
+                    elif event.ui_element == self.render_skip_text_box:
+                        try:
+                            self.render_skip = int(self.render_skip_text_box.get_text())
+                            if self.render_skip < 1:
+                                print('The render skip cannot be less than 1')
+                                self.render_skip = 1
+                        except ValueError:
+                            print(f'Cannot parse value {self.render_skip_text_box.get_text()}')
                 # FILE DIALOGS
                 elif event.user_type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
                     if event.ui_element == self.save_dialog:
