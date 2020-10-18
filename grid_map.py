@@ -230,6 +230,7 @@ class GridMap:
         updates = []
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
+                self.cell_grid[i][j].comes_from = None
                 if (i, j) == start_coords:
                     self.cell_grid[i][j].cell_type = 'start'
                 elif (i, j) == goal_coords:

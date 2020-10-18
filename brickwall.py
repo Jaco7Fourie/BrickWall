@@ -10,6 +10,7 @@ from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
 from growing_tree_maze import GrowingTreeMaze
 from svg_render import render_to_svg, RENDER_SOLUTION, RENDER_VISITED
+from wilson_maze import WilsonMaze
 
 
 class BrickWall:
@@ -268,7 +269,9 @@ class BrickWall:
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.6)
+        # self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.6)
+        self.maze_generator = WilsonMaze(self.grid_map.cell_grid)
+
         if self.walled_cells:
             self.draw_mode_walls = False
         moves = 'walls' if self.walled_cells else 'manhattan'
@@ -351,7 +354,7 @@ class BrickWall:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            elif event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN and not self.in_dialog:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 elif event.key == pygame.K_SPACE:
