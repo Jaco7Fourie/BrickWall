@@ -4,7 +4,6 @@ import pickle as pkl
 import pathlib
 import pygame
 import pygame_gui
-# from screeninfo import get_monitors
 
 from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
@@ -73,6 +72,7 @@ class BrickWall:
         self.cur_path = pathlib.Path().absolute()
         self.solver = None
         self.heuristic = 'euclidean'
+        self.maze_type = 'Tree maze'
         self.grid_map = None
         self.s_cell = None
         self.g_cell = None
@@ -96,6 +96,7 @@ class BrickWall:
         self.load_button = None
         self.toggle_cell_walls_button = None
         self.heuristic_menu = None
+        self.maze_type_menu = None
         self.reset_button = None
         self.reset_search_button = None
         self.grid_rows_label = None
@@ -179,10 +180,16 @@ class BrickWall:
         self.heuristic_weight_text_box = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(pos, size),
                                                                              manager=self.manager)
         self.heuristic_weight_text_box.set_text(str(self.heuristic_weight))
-        pos = (pos[0] + 20, pos[1] + 30)
+        pos = (pos[0], pos[1] + 50)
+        size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
+        self.maze_type_menu = pygame_gui.elements.UIDropDownMenu(['Tree maze', 'Wilson maze'],
+                                                                 relative_rect=pygame.Rect(pos, size),
+                                                                 starting_option='Tree maze',
+                                                                 manager=self.manager)
+        pos = (pos[0] + 20, pos[1] + 20)
         size = (150, self.TEXT_GUTTER - self.TEXT_BORDER + 10)
         self.twistiness_label = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(pos, size),
-                                                            text='Twistiness',
+                                                            text='long corridors',
                                                             manager=self.manager)
         pos = (pos[0] - 20, pos[1] + 30)
         size = (196, self.TEXT_GUTTER - self.TEXT_BORDER)
@@ -269,8 +276,10 @@ class BrickWall:
         self.grid_map.draw_grid()
         self.s_cell, self.g_cell = self.grid_map.init_grid(random_walls_ratio=self.random_walls)
         self.grid_map.render_cells()
-        # self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=0.6)
-        self.maze_generator = WilsonMaze(self.grid_map.cell_grid)
+        if self.maze_type == 'Tree maze':
+            self.maze_generator = GrowingTreeMaze(self.grid_map.cell_grid, backtrack_prob=self.twistiness)
+        else:
+            self.maze_generator = WilsonMaze(self.grid_map.cell_grid)
 
         if self.walled_cells:
             self.draw_mode_walls = False
@@ -300,12 +309,14 @@ class BrickWall:
                 msg = self.maze_generator.next_step(bounds, self.render_skip)
                 self.cleanup_required = True
                 self.heuristic_menu.disable()
+                self.maze_type_menu.disable()
                 self.toggle_draw_button.disable()
             elif self.cleanup_required:
                 self.cleanup_required = False
                 bounds = self.grid_map.post_maze_cleanup(self.s_cell.coord, self.g_cell.coord)
                 self.paused = True
                 self.heuristic_menu.enable()
+                self.maze_type_menu.enable()
             elif not self.solver.done and not self.paused:
                 msg = self.solver.next_step(bounds, self.render_skip)
             if self.step:
@@ -430,6 +441,9 @@ class BrickWall:
                         self.g_cell.f_score = float('inf')
                         self.g_cell.g_score = float('inf')
                         bounds.extend(self.reset_run())
+                    elif event.ui_element == self.maze_type_menu:
+                        self.maze_type = self.maze_type_menu.selected_option
+                        self.start_new_run()
                 # TEXT BOXES
                 elif event.user_type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
                     if event.ui_element == self.grid_rows_label_text_box:

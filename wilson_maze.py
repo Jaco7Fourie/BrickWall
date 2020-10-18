@@ -1,6 +1,6 @@
 from typing import List, Any, Tuple
 from grid_cell import WalledCell
-from random import sample, random
+from random import sample
 
 
 class WilsonMaze:
