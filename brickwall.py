@@ -267,6 +267,9 @@ class BrickWall:
         :return:
         """
         self.background.fill(self.BACKGROUND_COLOUR)
+        if self.BACKGROUND_SIZE[0] % self.grid_size[0] != 0:
+            print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
+            self.grid_size = [60, 120]
         self.grid_map = GridMap(self.background,
                                 [self.TEXT_BORDER,
                                  self.TEXT_GUTTER + self.TEXT_BORDER,
@@ -283,6 +286,10 @@ class BrickWall:
 
         if self.walled_cells:
             self.draw_mode_walls = False
+            self.toggle_draw_button.disable()
+        else:
+            self.draw_mode_walls = False
+            self.toggle_draw_button.enable()
         moves = 'walls' if self.walled_cells else 'manhattan'
         self.solver = PathSolverAStar(self.grid_map.cell_grid, self.s_cell, self.g_cell,
                                       heuristic=self.heuristic, movement=moves,
@@ -621,6 +628,10 @@ class BrickWall:
             self.walled_cells = True
         else:
             self.walled_cells = False
+        if self.walled_cells:
+            self.toggle_draw_button.disable()
+        else:
+            self.toggle_draw_button.enable()
 
     def draw_text(self, text, pos_index=0, col=(230, 230, 230)) -> pygame.Rect:
         """
