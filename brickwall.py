@@ -4,6 +4,7 @@ import pickle as pkl
 import pathlib
 import pygame
 import pygame_gui
+from screeninfo import get_monitors
 
 from grid_map import GridMap
 from path_solver_astar import PathSolverAStar
@@ -22,7 +23,7 @@ class BrickWall:
     TEXT_COLOUR = (7, 59, 76)  # Midnight green eagle green
     HIGHLIGHT_COLOUR = (250, 250, 25)
     # background size
-    BACKGROUND_SIZE = (720, 1440)
+    BACKGROUND_SIZE = [720, 1440]
     # background size
     UI_SIZE = (760, 200)
     # text border size
@@ -62,10 +63,13 @@ class BrickWall:
 
         self.font = pygame.font.SysFont('mono', self.TEXT_SIZE, bold=True)
 
+        # calculate te background size
+        self.BACKGROUND_SIZE[0] = self.height - 2*self.TEXT_GUTTER - 2*self.TEXT_BORDER
+        self.BACKGROUND_SIZE[1] = self.width - self.UI_SIZE[1] - self.TEXT_BORDER
         # check rows
         if self.BACKGROUND_SIZE[0] % rows != 0:
-            print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
-            rows = 120
+            print(f'The number of rows must divide evenly into {self.BACKGROUND_SIZE[0]}.')
+            rows = self.BACKGROUND_SIZE[0] // 12
         self.grid_size = [rows, rows * 2]
         self.random_walls = random_walls
 
@@ -267,9 +271,14 @@ class BrickWall:
         :return:
         """
         self.background.fill(self.BACKGROUND_COLOUR)
+        # check rows
         if self.BACKGROUND_SIZE[0] % self.grid_size[0] != 0:
-            print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
-            self.grid_size = [60, 120]
+            print(f'The number of rows must divide evenly into {self.BACKGROUND_SIZE[0]}.')
+            self.grid_size = [self.BACKGROUND_SIZE[0] // 12, self.BACKGROUND_SIZE[0] // 6]
+            self.grid_rows_label_text_box.set_text(str(self.grid_size[0]))
+        # if self.BACKGROUND_SIZE[0] % self.grid_size[0] != 0:
+        #     print(f'The number of rows must divide evenly into 720. Factors: 2 x 2 x 2 x 2 x 3 x 3 x 5')
+        #     self.grid_size = [60, 120]
         self.grid_map = GridMap(self.background,
                                 [self.TEXT_BORDER,
                                  self.TEXT_GUTTER + self.TEXT_BORDER,
@@ -318,7 +327,7 @@ class BrickWall:
                 self.heuristic_menu.disable()
                 self.maze_type_menu.disable()
                 self.toggle_draw_button.disable()
-            elif self.cleanup_required:
+            elif self.cleanup_required and not self.paused:
                 self.cleanup_required = False
                 bounds = self.grid_map.post_maze_cleanup(self.s_cell.coord, self.g_cell.coord)
                 self.paused = True
@@ -673,8 +682,14 @@ class BrickWall:
 
 
 if __name__ == '__main__':
+    valid_widths = [2362, 1930, 1642, 1354, 1066]
+    size = (1066, 476)
     # get screen resolution
-    # m = get_monitors()[0]
-    # call with width of window and fps
-    BrickWall().run()
-    # BrickWall(width=int(m.width - m.width * 0.1), height=int(m.height - m.height * 0.1)).run()
+    m = get_monitors()[0]
+    # check for an appropriate screen size
+    for w in valid_widths:
+        if m.width > w:
+            size = (w, 2*(BrickWall.TEXT_BORDER + BrickWall.TEXT_GUTTER) +
+                    (w - BrickWall.UI_SIZE[1] - BrickWall.TEXT_BORDER) // 2)
+            break
+    BrickWall(width=size[0], height=size[1], rows=24).run()
