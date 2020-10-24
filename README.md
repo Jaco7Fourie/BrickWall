@@ -10,6 +10,7 @@ BrickWall requires Python 3.6 as well as as the following packages that can be i
 3. drawsvg (1.7.0) 
 4. pygame_gui (0.5.7) 
 5. pygame (1.9.6)
+6. screeninfo (0.6.5)
 ## Usage
 ### Interface
 Brickwall starts with an empty grid in *paused* mode. You can unpause or pause the animation at any time by pressing 
