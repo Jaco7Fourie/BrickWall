@@ -682,14 +682,16 @@ class BrickWall:
 
 
 if __name__ == '__main__':
-    valid_widths = [2362, 1930, 1642, 1354, 1066]
+    valid_widths = [2362+864+432, 2362+864, 2362+432, 2362, 1930, 1642, 1354, 1066]
     size = (1066, 476)
     # get screen resolution
     m = get_monitors()[0]
+    print(m)
     # check for an appropriate screen size
     for w in valid_widths:
         if m.width > w:
             size = (w, 2*(BrickWall.TEXT_BORDER + BrickWall.TEXT_GUTTER) +
                     (w - BrickWall.UI_SIZE[1] - BrickWall.TEXT_BORDER) // 2)
             break
+    print(size)
     BrickWall(width=size[0], height=size[1], rows=24).run()
